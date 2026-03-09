@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caramello Kids — Резервации</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<meta name="application-name" content="Caramello">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Caramello">
+<meta name="theme-color" content="#2C4A3E">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<style>
+:root {
+  --cream:#FAF6F0;--warm-white:#FFFDF9;--gold:#C9A84C;--gold-light:#E8D5A3;--gold-dark:#9B7A2E;
+  --forest:#2C4A3E;--forest-mid:#3D6355;--forest-light:#5C8A78;--charcoal:#2A2A2A;
+  --text-mid:#5A5A5A;--text-light:#8A8A8A;--kids-orange:#E8845C;--paintball:#6B4C9A;
+  --danger:#C0392B;--success:#27AE60;--border:rgba(201,168,76,0.2);
+  --shadow:0 4px 24px rgba(44,74,62,0.08);--shadow-lg:0 12px 48px rgba(44,74,62,0.14);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--charcoal);min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:260px;background:var(--forest);display:flex;flex-direction:column;z-index:100;box-shadow:4px 0 24px rgba(0,0,0,0.15);transition:transform 0.25s ease;}
+.sidebar-logo{padding:22px 24px 16px;border-bottom:1px solid rgba(255,255,255,0.1);}
+.sidebar-logo h1{font-family:'Playfair Display',serif;color:var(--gold);font-size:1.2rem;line-height:1.3;}
+.sidebar-logo span{color:rgba(255,255,255,0.45);font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;}
+.sidebar-user{padding:14px 24px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.user-avatar{width:34px;height:34px;background:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;color:var(--forest);flex-shrink:0;}
+.user-info{flex:1;min-width:0;}
+.user-name{color:#fff;font-size:0.82rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-role{color:var(--gold-light);font-size:0.68rem;opacity:0.8;}
+.sidebar-nav{padding:12px 0;flex:1;overflow-y:auto;}
+.nav-section-label{padding:8px 24px 4px;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.35);font-weight:600;}
+.nav-item{display:flex;align-items:center;gap:12px;padding:12px 24px;cursor:pointer;color:rgba(255,255,255,0.65);font-size:0.88rem;font-weight:400;transition:all 0.18s;border-left:3px solid transparent;}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+.nav-item.active{background:rgba(201,168,76,0.12);color:var(--gold);border-left-color:var(--gold);font-weight:500;}
+.nav-icon{font-size:1rem;width:20px;text-align:center;flex-shrink:0;}
+.nav-badge{margin-left:auto;background:var(--kids-orange);color:#fff;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;}
+.sidebar-footer{padding:14px 24px;border-top:1px solid rgba(255,255,255,0.08);}
+.logout-btn{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.4);font-size:0.82rem;cursor:pointer;transition:color 0.18s;background:none;border:none;font-family:inherit;}
+.logout-btn:hover{color:rgba(255,255,255,0.75);}
+
+/* HAMBURGER */
+.hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;flex-direction:column;gap:5px;}
+.hamburger span{display:block;width:24px;height:2px;background:var(--forest);border-radius:2px;transition:all 0.2s;}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:99;}
+.sidebar-overlay.open{display:block;}
+
+/* MAIN */
+.main{margin-left:260px;min-height:100vh;display:flex;flex-direction:column;}
+.topbar{background:var(--warm-white);border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 2px 12px rgba(44,74,62,0.05);}
+.topbar-left{display:flex;align-items:center;gap:8px;}
+.topbar-title{font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--forest);}
+.topbar-actions{display:flex;align-items:center;gap:10px;}
+.date-badge{background:var(--cream);border:1px solid var(--border);padding:5px 12px;border-radius:20px;font-size:0.76rem;color:var(--text-mid);}
+.content{padding:24px 28px;flex:1;}
+.view{display:none;}.view.active{display:block;}
+
+/* SYNC STATUS */
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#ccc;display:inline-block;margin-right:4px;}
+.sync-dot.ok{background:var(--success);}
+.sync-dot.err{background:var(--danger);}
+.sync-dot.loading{background:var(--gold);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat-card{background:var(--warm-white);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);transition:transform 0.2s,box-shadow 0.2s;}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
+.stat-icon{font-size:1.4rem;margin-bottom:6px;}
+.stat-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);font-weight:600;margin-bottom:6px;}
+.stat-value{font-family:'Playfair Display',serif;font-size:1.9rem;color:var(--forest);line-height:1;}
+.stat-sub{font-size:0.73rem;color:var(--text-light);margin-top:3px;}
+
+/* CARDS */
+.card{background:var(--warm-white);border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:var(--shadow);margin-bottom:18px;}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+.card-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--forest);}
+
+/* BUTTONS */
+.btn{padding:9px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.84rem;font-weight:500;cursor:pointer;border:none;transition:all 0.18s;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:var(--forest);color:#fff;}.btn-primary:hover{background:var(--forest-mid);}
+.btn-gold{background:var(--gold);color:var(--forest);font-weight:600;}.btn-gold:hover{background:var(--gold-dark);color:#fff;}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-mid);}.btn-outline:hover{border-color:var(--forest-light);color:var(--forest);}
+.btn-danger{background:var(--danger);color:#fff;}.btn-danger:hover{background:#a93226;}
+.btn-kids{background:var(--kids-orange);color:#fff;}.btn-kids:hover{background:#d4754e;}
+.btn-paintball{background:var(--paintball);color:#fff;}.btn-paintball:hover{background:#5a3d88;}
+.btn-sm{padding:7px 14px;font-size:0.8rem;}
+.btn-xs{padding:5px 10px;font-size:0.74rem;border-radius:6px;}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+table{width:100%;border-collapse:collapse;}
+th{text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);font-weight:600;padding:10px 12px;border-bottom:2px solid var(--border);}
+td{padding:12px 12px;font-size:0.84rem;border-bottom:1px solid rgba(201,168,76,0.1);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(44,74,62,0.03);}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:0.7rem;font-weight:600;}
+.badge-confirmed{background:rgba(39,174,96,0.12);color:#1e8449;}
+.badge-pending{background:rgba(245,200,66,0.18);color:#9b7d10;}
+.badge-cancelled{background:rgba(192,57,43,0.1);color:var(--danger);}
+.badge-kids{background:rgba(232,132,92,0.15);color:#b85c35;}
+.badge-paintball{background:rgba(107,76,154,0.15);color:var(--paintball);}
+
+/* FORM */
+.form-grid{display:grid;gap:14px;}
+.form-grid-2{grid-template-columns:1fr 1fr;}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-label{font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-mid);}
+.form-control{padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.86rem;color:var(--charcoal);background:var(--cream);transition:border-color 0.18s,box-shadow 0.18s;outline:none;}
+.form-control:focus{border-color:var(--forest-light);box-shadow:0 0 0 3px rgba(44,74,62,0.08);}
+textarea.form-control{resize:vertical;min-height:70px;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px);}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--warm-white);border-radius:16px;padding:26px 30px;width:640px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.2);animation:slideUp 0.22s ease;}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.modal-title{font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--forest);}
+.modal-close{background:none;border:none;cursor:pointer;font-size:1.3rem;color:var(--text-light);line-height:1;}
+.modal-close:hover{color:var(--charcoal);}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:14px;border-top:1px solid var(--border);}
+
+/* TABS */
+.tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border);overflow-x:auto;}
+.tab-btn{padding:10px 20px;font-family:'DM Sans',sans-serif;font-size:0.84rem;font-weight:500;cursor:pointer;background:none;border:none;color:var(--text-light);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.18s;white-space:nowrap;display:flex;align-items:center;gap:6px;}
+.tab-btn.active{color:var(--forest);border-bottom-color:var(--forest);}
+.tab-count{background:var(--cream);border:1px solid var(--border);padding:1px 7px;border-radius:10px;font-size:0.68rem;color:var(--text-mid);}
+.tab-content{display:none;}.tab-content.active{display:block;}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:18px;flex-wrap:wrap;}
+.search-input{padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.84rem;background:var(--warm-white);outline:none;width:200px;transition:border-color 0.18s;}
+.search-input:focus{border-color:var(--forest-light);}
+.filter-select{padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.84rem;background:var(--warm-white);color:var(--charcoal);outline:none;cursor:pointer;}
+
+/* FLOOR PLAN */
+.floor-plan-container{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+.floor-zone{background:var(--cream);border:1.5px solid var(--border);border-radius:12px;padding:16px;}
+.floor-zone-title{font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-mid);margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+.tables-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.table-chip{padding:8px 12px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:2px solid transparent;transition:all 0.18s;text-align:center;min-width:60px;}
+.table-chip.free{background:rgba(39,174,96,0.1);border-color:rgba(39,174,96,0.3);color:#1e8449;}
+.table-chip.free:hover{background:rgba(39,174,96,0.2);}
+.table-chip.occupied{background:rgba(192,57,43,0.1);border-color:rgba(192,57,43,0.25);color:var(--danger);}
+.table-chip.partial{background:rgba(245,200,66,0.15);border-color:rgba(245,200,66,0.4);color:#9b7d10;}
+.table-chip-num{font-size:0.9rem;}
+.table-chip-cap{font-size:0.65rem;font-weight:400;opacity:0.8;}
+.floor-legend{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:0.74rem;color:var(--text-mid);}
+.legend-dot{width:10px;height:10px;border-radius:3px;}
+.legend-free{background:rgba(39,174,96,0.4);}
+.legend-occupied{background:rgba(192,57,43,0.4);}
+.legend-partial{background:rgba(245,200,66,0.5);}
+
+/* KIDS PRICING */
+.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+.pricing-card{border:1.5px solid var(--border);border-radius:10px;padding:14px;background:var(--cream);}
+.pricing-card-title{font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-mid);margin-bottom:10px;}
+.pricing-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(201,168,76,0.1);font-size:0.82rem;}
+.pricing-row:last-child{border-bottom:none;}
+.pricing-price{font-weight:600;color:var(--forest);}
+
+/* KAPARO */
+.kaparo-box{background:rgba(201,168,76,0.08);border:1.5px solid rgba(201,168,76,0.25);border-radius:10px;padding:14px;margin-top:12px;}
+.kaparo-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold-dark);margin-bottom:8px;}
+
+/* KIDS HIGHLIGHT */
+.kids-highlight{background:linear-gradient(135deg,rgba(245,200,66,0.08),rgba(232,132,92,0.08));border:1.5px solid rgba(232,132,92,0.25);border-radius:10px;padding:14px;margin-bottom:12px;}
+.kids-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--kids-orange);margin-bottom:8px;}
+.paintball-highlight{background:linear-gradient(135deg,rgba(107,76,154,0.06),rgba(107,76,154,0.02));border:1.5px solid rgba(107,76,154,0.2);border-radius:10px;padding:14px;margin-bottom:12px;}
+.paintball-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--paintball);margin-bottom:8px;}
+
+/* ORDER SUMMARY */
+.order-summary{background:var(--cream);border-radius:10px;padding:12px;margin-top:10px;}
+.order-row{display:flex;justify-content:space-between;font-size:0.82rem;padding:3px 0;}
+.order-total{font-weight:600;color:var(--forest);border-top:1px solid var(--border);margin-top:5px;padding-top:5px;}
+
+/* MENU GRID */
+.menu-categories{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;}
+.menu-cat-btn{padding:5px 14px;border-radius:20px;font-size:0.78rem;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:transparent;color:var(--text-mid);font-family:'DM Sans',sans-serif;transition:all 0.18s;}
+.menu-cat-btn.active,.menu-cat-btn:hover{background:var(--forest);border-color:var(--forest);color:#fff;}
+.menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.menu-item{border:1.5px solid var(--border);border-radius:10px;padding:12px;transition:all 0.18s;cursor:pointer;position:relative;}
+.menu-item:hover{border-color:var(--forest-light);box-shadow:var(--shadow);}
+.menu-item.selected{border-color:var(--gold);background:rgba(201,168,76,0.05);}
+.menu-item-name{font-weight:500;font-size:0.86rem;margin-bottom:3px;}
+.menu-item-price{color:var(--gold-dark);font-weight:600;font-size:0.82rem;}
+.menu-item-cat{font-size:0.68rem;color:var(--text-light);margin-bottom:5px;}
+.menu-check{position:absolute;top:7px;right:7px;width:16px;height:16px;background:var(--gold);border-radius:50%;display:none;align-items:center;justify-content:center;font-size:0.6rem;color:#fff;}
+.menu-item.selected .menu-check{display:flex;}
+
+/* USER CARDS */
+.user-card{display:flex;align-items:center;gap:12px;padding:13px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--warm-white);transition:box-shadow 0.18s;}
+.user-card:hover{box-shadow:var(--shadow);}
+.user-card-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.88rem;flex-shrink:0;}
+.avatar-green{background:rgba(44,74,62,0.15);color:var(--forest);}
+.avatar-gold{background:rgba(201,168,76,0.2);color:var(--gold-dark);}
+.avatar-orange{background:rgba(232,132,92,0.2);color:var(--kids-orange);}
+.avatar-purple{background:rgba(107,76,154,0.15);color:var(--paintball);}
+
+/* TOAST */
+.toast-container{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:7px;}
+.toast{background:var(--forest);color:#fff;padding:11px 16px;border-radius:10px;font-size:0.83rem;box-shadow:var(--shadow-lg);animation:slideInRight 0.25s ease;display:flex;align-items:center;gap:7px;max-width:300px;}
+@keyframes slideInRight{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+.toast-success{background:#1e7a45;}
+.toast-error{background:var(--danger);}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:48px 24px;color:var(--text-light);}
+.empty-state-icon{font-size:2.5rem;margin-bottom:10px;opacity:0.4;}
+.empty-state h3{font-size:0.92rem;font-weight:500;color:var(--text-mid);}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(250,246,240,0.85);display:flex;align-items:center;justify-content:center;z-index:9000;backdrop-filter:blur(2px);}
+.loading-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--forest);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* LOGIN */
+.login-screen{position:fixed;inset:0;background:var(--forest);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.login-box{background:var(--warm-white);border-radius:20px;padding:40px 44px;width:400px;max-width:95vw;box-shadow:0 32px 80px rgba(0,0,0,0.25);text-align:center;}
+.login-box h1{font-family:'Playfair Display',serif;color:var(--forest);font-size:1.7rem;margin-bottom:4px;}
+.login-subtitle{color:var(--text-light);font-size:0.83rem;margin-bottom:28px;}
+.login-box .form-group{text-align:left;margin-bottom:12px;}
+.login-box .btn{width:100%;justify-content:center;padding:12px;font-size:0.9rem;}
+.login-users{margin-top:22px;padding-top:18px;border-top:1px solid var(--border);}
+.login-users p{font-size:0.7rem;color:var(--text-light);margin-bottom:9px;text-transform:uppercase;letter-spacing:0.08em;}
+.login-user-chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+.login-chip{padding:5px 12px;border-radius:20px;font-size:0.74rem;cursor:pointer;background:var(--cream);border:1px solid var(--border);color:var(--text-mid);font-family:'DM Sans',sans-serif;transition:all 0.15s;}
+.login-chip:hover{background:var(--forest);color:#fff;border-color:var(--forest);}
+
+/* PRINT */
+@media print {
+  .sidebar,.topbar,.topbar-actions,.btn,.modal-overlay,.toast-container,.hamburger,.sidebar-overlay{display:none!important;}
+  .main{margin-left:0!important;}
+  .content{padding:10px!important;}
+  body{background:#fff;}
+  .card{box-shadow:none;border:1px solid #ddd;}
+  .no-print{display:none!important;}
+}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .hamburger{display:flex;}
+  .sidebar{transform:translateX(-100%);z-index:200;width:280px;}
+  .sidebar.open{transform:translateX(0);}
+  .main{margin-left:0;}
+  .topbar{padding:0 14px;height:56px;}
+  .topbar-title{font-size:0.95rem;}
+  .date-badge{display:none;}
+  .content{padding:14px;}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .stat-card{padding:14px;}
+  .stat-value{font-size:1.6rem;}
+  .card{padding:14px;}
+  .floor-plan-container{grid-template-columns:1fr;}
+  .pricing-grid{grid-template-columns:1fr;}
+  .form-grid-2{grid-template-columns:1fr;}
+  .form-grid-3{grid-template-columns:1fr 1fr;}
+  .menu-grid{grid-template-columns:1fr 1fr;}
+  #modalMenuGrid{grid-template-columns:1fr 1fr!important;}
+  table{min-width:520px;}
+  th,td{padding:9px 9px;font-size:0.79rem;}
+  .nav-item{padding:13px 24px;}
+  .modal{width:100%!important;max-width:100vw;max-height:100dvh;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;margin:0;animation:slideUpMobile 0.25s ease;}
+  @keyframes slideUpMobile{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .modal-overlay{align-items:flex-end;}
+  .filter-bar{gap:7px;}
+  .search-input{width:100%;}
+  .filter-select{flex:1;}
+}
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr 1fr;}
+  .form-grid-3{grid-template-columns:1fr;}
+  .menu-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay" style="display:none">
+  <div class="loading-spinner"></div>
+</div>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div style="font-size:2rem;margin-bottom:8px">🍽️🎠</div>
+    <h1>Caramello Kids</h1>
+    <p class="login-subtitle">Система за резервации</p>
+    <div class="form-group"><label class="form-label">Потребител</label><input class="form-control" id="loginUser" placeholder="Въведи потребител"/></div>
+    <div class="form-group" style="margin-bottom:18px"><label class="form-label">Парола</label><input class="form-control" type="password" id="loginPass" placeholder="••••••"/></div>
+    <button class="btn btn-primary" onclick="doLogin()">🔓 Влез</button>
+    <div class="login-users">
+      <p>Бърз достъп</p>
+      <div class="login-user-chips">
+        <div class="login-chip" onclick="quickLogin('Мениджър')">Мениджър</div>
+        <div class="login-chip" onclick="quickLogin('Сервитьор')">Сервитьор</div>
+        <div class="login-chip" onclick="quickLogin('Рецепция')">Рецепция</div>
+        <div class="login-chip" onclick="quickLogin('Аниматор')">Аниматор</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <h1>🍽️ Caramello<br>Kids</h1>
+    <span>Резервации v2.0</span>
+  </div>
+  <div class="sidebar-user">
+    <div class="user-avatar" id="sidebarInitial">М</div>
+    <div class="user-info">
+      <div class="user-name" id="sidebarName">Мениджър</div>
+      <div class="user-role" id="sidebarRole">Администратор</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Главно</div>
+    <div class="nav-item active" onclick="showView('dashboard')"><span class="nav-icon">📊</span>Табло</div>
+    <div class="nav-item" onclick="showView('reservations')"><span class="nav-icon">📅</span>Резервации<span class="nav-badge" id="pendingBadge" style="display:none">0</span></div>
+    <div class="nav-item" onclick="showView('floorplan')"><span class="nav-icon">🗺️</span>План на залата</div>
+    <div class="nav-section-label" style="margin-top:6px">Зони</div>
+    <div class="nav-item" onclick="showView('kids')"><span class="nav-icon">🎠</span>Детски Център</div>
+    <div class="nav-item" onclick="showView('paintball')"><span class="nav-icon">🎯</span>Пейнтбол</div>
+    <div class="nav-section-label" style="margin-top:6px">Управление</div>
+    <div class="nav-item" onclick="showView('menu')"><span class="nav-icon">📋</span>Меню</div>
+    <div class="nav-item" onclick="showView('users')" id="usersNav"><span class="nav-icon">👥</span>Потребители</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:0.75rem;color:rgba(255,255,255,0.5)">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncStatus">Свързване...</span>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">🚪 Изход</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="topbar-title" id="topbarTitle">Табло</div>
+    </div>
+    <div class="topbar-actions">
+      <div class="date-badge" id="dateBadge"></div>
+      <button class="btn btn-outline btn-sm no-print" onclick="printDay()">🖨️ Печат</button>
+      <button class="btn btn-gold btn-sm no-print" onclick="openNewReservation()">＋ Резервация</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-label">Днешни</div><div class="stat-value" id="stat-today">0</div><div class="stat-sub">резервации</div></div>
+        <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Чакащи</div><div class="stat-value" id="stat-pending">0</div><div class="stat-sub">за потвърждение</div></div>
+        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Гости днес</div><div class="stat-value" id="stat-guests">0</div><div class="stat-sub">общо</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Капаро</div><div class="stat-value" id="stat-kaparo">0</div><div class="stat-sub">лв. събрано</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:18px">
+        <div class="card">
+          <div class="card-header"><div class="card-title">📅 Програма за днес</div><button class="btn btn-outline btn-sm" onclick="printDay()">🖨️ Печат</button></div>
+          <div id="dashToday"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">🗺️ Заетост на залата</div><button class="btn btn-outline btn-sm" onclick="showView('floorplan')">Виж план →</button></div>
+          <div id="dashOccupancy"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESERVATIONS -->
+    <div class="view" id="view-reservations">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(this,'tab-all')">Всички <span class="tab-count" id="cnt-all">0</span></button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-confirmed')">Потвърдени <span class="tab-count" id="cnt-confirmed">0</span></button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-pending')">Чакащи <span class="tab-count" id="cnt-pending">0</span></button>
+        <button class="tab-btn" onclick="switchTab(this,'tab-cancelled')">Отказани <span class="tab-count" id="cnt-cancelled">0</span></button>
+      </div>
+      <div class="filter-bar">
+        <input class="search-input" placeholder="🔍 Търси клиент..." id="searchInput" oninput="renderReservations()">
+        <select class="filter-select" id="filterDate" onchange="renderReservations()"><option value="">📅 Всички дати</option></select>
+        <select class="filter-select" id="filterZone" onchange="renderReservations()">
+          <option value="">Всички зони</option>
+          <option value="indoor">🍽️ Вътрешна</option>
+          <option value="garden">🌿 Градина</option>
+          <option value="kids">🎠 Детски</option>
+          <option value="paintball">🎯 Пейнтбол</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="loadFromSheets()">🔄 Обнови</button>
+      </div>
+      <div class="card" style="padding:0">
+        <div class="tab-content active" id="tab-all"><div class="table-wrap" id="resTable-all"></div></div>
+        <div class="tab-content" id="tab-confirmed"><div class="table-wrap" id="resTable-confirmed"></div></div>
+        <div class="tab-content" id="tab-pending"><div class="table-wrap" id="resTable-pending"></div></div>
+        <div class="tab-content" id="tab-cancelled"><div class="table-wrap" id="resTable-cancelled"></div></div>
+      </div>
+    </div>
+
+    <!-- FLOOR PLAN -->
+    <div class="view" id="view-floorplan">
+      <div class="filter-bar">
+        <input type="date" class="filter-select" id="floorDate" onchange="renderFloorPlan()">
+        <input type="time" class="filter-select" id="floorTime" onchange="renderFloorPlan()">
+        <span style="font-size:0.8rem;color:var(--text-light)">Виж заетостта в конкретен час</span>
+      </div>
+      <div class="floor-plan-container">
+        <div class="floor-zone">
+          <div class="floor-zone-title">🍽️ Вътрешна зала</div>
+          <div class="tables-grid" id="tables-indoor"></div>
+        </div>
+        <div class="floor-zone">
+          <div class="floor-zone-title">🌿 Градина (101–113)</div>
+          <div class="tables-grid" id="tables-garden"></div>
+        </div>
+      </div>
+      <div class="floor-legend">
+        <div class="legend-item"><div class="legend-dot legend-free"></div>Свободна</div>
+        <div class="legend-item"><div class="legend-dot legend-occupied"></div>Заета</div>
+        <div class="legend-item"><div class="legend-dot legend-partial"></div>Частично</div>
+      </div>
+      <div id="tableDetail" style="display:none" class="card" style="margin-top:14px">
+        <div class="card-title" id="tableDetailTitle"></div>
+        <div id="tableDetailContent"></div>
+      </div>
+    </div>
+
+    <!-- KIDS -->
+    <div class="view" id="view-kids">
+      <div class="card">
+        <div class="card-header"><div class="card-title">💰 Ценоразпис — Детски Център</div></div>
+        <div class="pricing-grid">
+          <div class="pricing-card">
+            <div class="pricing-card-title">📅 Делник (Пон–Пет) · 16:00–22:00</div>
+            <div class="pricing-row"><span>30 мин.</span><span class="pricing-price">3.91 лв.</span></div>
+            <div class="pricing-row"><span>1 час</span><span class="pricing-price">6.85 лв.</span></div>
+            <div class="pricing-row"><span>2 часа</span><span class="pricing-price">12.72 лв.</span></div>
+            <div class="pricing-row"><span>3 часа</span><span class="pricing-price">17.60 лв.</span></div>
+          </div>
+          <div class="pricing-card">
+            <div class="pricing-card-title">🎉 Уикенд (Съб–Нед) · 10:00–22:00</div>
+            <div class="pricing-row"><span>30 мин.</span><span class="pricing-price">4.89 лв.</span></div>
+            <div class="pricing-row"><span>1 час</span><span class="pricing-price">7.82 лв.</span></div>
+            <div class="pricing-row"><span>2 часа</span><span class="pricing-price">14.67 лв.</span></div>
+            <div class="pricing-row"><span>3 часа</span><span class="pricing-price">20.54 лв.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🎠 Резервации Детски Център</div>
+          <button class="btn btn-kids btn-sm" onclick="openNewReservation('kids')">＋ Нова</button>
+        </div>
+        <div class="table-wrap" id="kidsTable"></div>
+      </div>
+    </div>
+
+    <!-- PAINTBALL -->
+    <div class="view" id="view-paintball">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🎯 Резервации Пейнтбол</div>
+          <button class="btn btn-paintball btn-sm" onclick="openNewReservation('paintball')">＋ Нова</button>
+        </div>
+        <div class="table-wrap" id="paintballTable"></div>
+      </div>
+    </div>
+
+    <!-- MENU -->
+    <div class="view" id="view-menu">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Управление на Меню</div><button class="btn btn-primary btn-sm" onclick="openNewMenuItem()">＋ Добави</button></div>
+        <div class="menu-categories" id="menuCats"></div>
+        <div class="menu-grid" id="menuGrid"></div>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="view" id="view-users">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Потребители</div><button class="btn btn-primary btn-sm" onclick="openNewUser()">＋ Нов</button></div>
+        <div id="usersList"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- MODAL: Reservation -->
+<div class="modal-overlay" id="resModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="resModalTitle">Нова Резервация</div>
+      <button class="modal-close" onclick="closeModal('resModal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label class="form-label">Клиент *</label><input class="form-control" id="f-name" placeholder="Иван Иванов"/></div>
+        <div class="form-group"><label class="form-label">Телефон *</label><input class="form-control" id="f-phone" placeholder="08X XXX XXXX"/></div>
+      </div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group"><label class="form-label">Дата *</label><input type="date" class="form-control" id="f-date"/></div>
+        <div class="form-group"><label class="form-label">Час *</label><input type="time" class="form-control" id="f-time"/></div>
+        <div class="form-group"><label class="form-label">Продължителност</label>
+          <select class="form-control" id="f-duration">
+            <option value="1">1 час</option><option value="2">2 часа</option><option value="3">3 часа</option>
+            <option value="4">4 часа</option><option value="8">Целия ден</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group"><label class="form-label">Зона</label>
+          <select class="form-control" id="f-zone" onchange="updateTableOptions()">
+            <option value="indoor">🍽️ Вътрешна</option>
+            <option value="garden">🌿 Градина</option>
+            <option value="kids">🎠 Детски</option>
+            <option value="paintball">🎯 Пейнтбол</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Маса</label>
+          <select class="form-control" id="f-table"></select>
+        </div>
+        <div class="form-group"><label class="form-label">Гости</label><input type="number" class="form-control" id="f-guests" min="1" max="100" value="2"/></div>
+      </div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label class="form-label">Статус</label>
+          <select class="form-control" id="f-status">
+            <option value="pending">⏳ Чакащ</option><option value="confirmed">✅ Потвърден</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Въведено от</label>
+          <input class="form-control" id="f-createdby" readonly style="background:#f0f0f0"/>
+        </div>
+      </div>
+
+      <!-- KIDS FIELDS -->
+      <div id="kidsFields" style="display:none">
+        <div class="kids-highlight">
+          <div class="kids-label">🎈 Детски Център</div>
+          <div class="form-grid form-grid-3">
+            <div class="form-group"><label class="form-label">Деца</label><input type="number" class="form-control" id="f-kids-count" min="1" max="30" value="1"/></div>
+            <div class="form-group"><label class="form-label">Ден</label>
+              <select class="form-control" id="f-kids-daytype">
+                <option value="weekday">Делник</option><option value="weekend">Уикенд</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Рожден ден?</label>
+              <select class="form-control" id="f-kids-birthday"><option value="no">Не</option><option value="yes">🎂 Да</option></select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:10px"><label class="form-label">Изчислена цена</label>
+            <div id="kidsPrice" style="font-size:1.1rem;font-weight:700;color:var(--forest);padding:8px 0"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAINTBALL FIELDS -->
+      <div id="paintballFields" style="display:none">
+        <div class="paintball-highlight">
+          <div class="paintball-label">🎯 Пейнтбол</div>
+          <div class="form-grid form-grid-2">
+            <div class="form-group"><label class="form-label">Брой играчи</label><input type="number" class="form-control" id="f-pb-players" min="2" max="30" value="6"/></div>
+            <div class="form-group"><label class="form-label">Пакет</label>
+              <select class="form-control" id="f-pb-package">
+                <option>Стандарт</option><option>Премиум</option><option>VIP</option><option>Корпоративен</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KAPARO -->
+      <div class="kaparo-box">
+        <div class="kaparo-label">💰 Капаро</div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group"><label class="form-label">Сума (лв.)</label><input type="number" class="form-control" id="f-kaparo" min="0" step="10" value="0" placeholder="0"/></div>
+          <div class="form-group"><label class="form-label">Статус</label>
+            <select class="form-control" id="f-kaparo-status">
+              <option value="none">Няма</option><option value="paid">✅ Платено</option><option value="pending">⏳ Очаква се</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- MENU SELECTION -->
+      <div class="form-group">
+        <label class="form-label">Избрани ястия</label>
+        <div class="menu-categories" id="modalMenuCats"></div>
+        <div class="menu-grid" id="modalMenuGrid" style="grid-template-columns:repeat(2,1fr)"></div>
+        <div class="order-summary" id="orderSummary" style="display:none"><div class="kids-label">Поръчка</div><div id="orderItems"></div></div>
+      </div>
+
+      <div class="form-group"><label class="form-label">Бележки</label><textarea class="form-control" id="f-notes" placeholder="Алергии, специални желания..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('resModal')">Отказ</button>
+      <button class="btn btn-gold" onclick="saveReservation()" id="saveBtn">💾 Запази</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Menu Item -->
+<div class="modal-overlay" id="menuModal">
+  <div class="modal" style="width:420px">
+    <div class="modal-header"><div class="modal-title">Ново Ястие</div><button class="modal-close" onclick="closeModal('menuModal')">✕</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Наименование</label><input class="form-control" id="mi-name" placeholder="Напр. Пиле на грил"/></div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group"><label class="form-label">Категория</label>
+          <select class="form-control" id="mi-cat">
+            <option>Предястия</option><option>Основни</option><option>Пици</option><option>Паста</option>
+            <option>Десерти</option><option>Напитки</option><option>Детско меню</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Цена (лв.)</label><input type="number" class="form-control" id="mi-price" min="0" step="0.50" value="12.00"/></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('menuModal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveMenuItem()">Добави</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: User -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal" style="width:380px">
+    <div class="modal-header"><div class="modal-title">Нов Потребител</div><button class="modal-close" onclick="closeModal('userModal')">✕</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Пълно Име</label><input class="form-control" id="u-name" placeholder="Иван Петров"/></div>
+      <div class="form-group"><label class="form-label">Роля</label>
+        <select class="form-control" id="u-role">
+          <option value="manager">Мениджър</option><option value="waiter">Сервитьор</option>
+          <option value="reception">Рецепция</option><option value="animator">Аниматор</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Парола</label><input type="password" class="form-control" id="u-pass" placeholder="••••••"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('userModal')">Отказ</button>
+      <button class="btn btn-primary" onclick="saveUser()">Добави</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT AREA -->
+<div id="printArea" style="display:none"></div>
+
+<script>
+// ====== CONFIG ======
+const API_URL = 'https://script.google.com/macros/s/AKfycbywW02Y8gPmlKbCc2S0oc41Ndlu3YjcyAWSYGa5sHjX-ZaO6Z5vrg-W8huSW0kvqQNR/exec';
+
+// ====== TABLES ======
+const TABLES = {
+  indoor: [
+    {id:'1',num:'1',cap:4},{id:'2',num:'2',cap:7},{id:'3',num:'3',cap:7},
+    {id:'4',num:'4',cap:14,note:'макс'},{id:'5',num:'5',cap:4},{id:'6',num:'6',cap:7},
+    {id:'7',num:'7',cap:7},{id:'51',num:'51',cap:4},{id:'52',num:'52',cap:4},
+    {id:'53',num:'53',cap:4},{id:'54',num:'54',cap:4},{id:'55',num:'55',cap:4},
+    {id:'56',num:'56',cap:4},{id:'31',num:'31',cap:2},{id:'32',num:'32',cap:2},
+    {id:'33',num:'33',cap:2},{id:'20',num:'20',cap:20,note:'бар плот'},
+    {id:'R1',num:'Кр.1',cap:12,note:'кръгла'},{id:'R2',num:'Кр.2',cap:16,note:'3ч.'}
+  ],
+  garden: [
+    {id:'101',num:'101',cap:6},{id:'102',num:'102',cap:4},{id:'103',num:'103',cap:4},
+    {id:'104',num:'104',cap:4},{id:'105',num:'105',cap:8,note:'макс16'},
+    {id:'106',num:'106',cap:4},{id:'107',num:'107',cap:4},{id:'108',num:'108',cap:4},
+    {id:'109',num:'109',cap:4},{id:'110',num:'110',cap:2},{id:'111',num:'111',cap:2},
+    {id:'112',num:'112',cap:6},{id:'113',num:'113',cap:6}
+  ],
+  kids: [{id:'kids-main',num:'Детски',cap:30}],
+  paintball: [{id:'pb-main',num:'Пейнтбол',cap:20}]
+};
+
+// ====== STATE ======
+let currentUser = null;
+let editingId = null;
+let reservations = [];
+let selectedMenuItems = [];
+let activeMenuCat = 'all';
+
+let menuItems = [
+  {id:1,name:'Шопска салата',cat:'Предястия',price:8.50},
+  {id:2,name:'Пиле на грил',cat:'Основни',price:18.00},
+  {id:3,name:'Маргарита пица',cat:'Пици',price:14.00},
+  {id:4,name:'Тирамису',cat:'Десерти',price:7.50},
+  {id:5,name:'Спагети Болонезе',cat:'Паста',price:15.00},
+  {id:6,name:'Детско пилешко',cat:'Детско меню',price:9.00},
+  {id:7,name:'Сок пресован',cat:'Напитки',price:5.00},
+  {id:8,name:'Телешко филе',cat:'Основни',price:28.00},
+];
+
+let users = [
+  {id:1,name:'Мениджър',role:'manager',pass:'1234'},
+  {id:2,name:'Сервитьор',role:'waiter',pass:'1111'},
+  {id:3,name:'Рецепция',role:'reception',pass:'2222'},
+  {id:4,name:'Аниматор',role:'animator',pass:'3333'},
+];
+
+const roleLabels = {manager:'Администратор',waiter:'Сервитьор',reception:'Рецепция',animator:'Аниматор'};
+const statusLabels = {confirmed:'Потвърден',pending:'Чакащ',cancelled:'Отказан'};
+const statusClasses = {confirmed:'badge-confirmed',pending:'badge-pending',cancelled:'badge-cancelled'};
+const zoneLabels = {indoor:'🍽️ Вътрешна',garden:'🌿 Градина',kids:'🎠 Детски',paintball:'🎯 Пейнтбол'};
+
+// ====== GOOGLE SHEETS ======
+function apiCall(params) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'cb_' + Date.now();
+    params.callback = callbackName;
+    const url = API_URL + '?' + new URLSearchParams(params).toString();
+    const script = document.createElement('script');
+    script.src = url;
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      resolve(data);
+    };
+    script.onerror = function() {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      reject(new Error('Network error'));
+    };
+    setTimeout(() => {
+      if (window[callbackName]) {
+        delete window[callbackName];
+        if (document.body.contains(script)) document.body.removeChild(script);
+        reject(new Error('Timeout'));
+      }
+    }, 10000);
+    document.body.appendChild(script);
+  });
+}
+
+async function loadFromSheets() {
+  setSyncStatus('loading','Зарежда...');
+  try {
+    const data = await apiCall({action:'getAll'});
+    if (data.status === 'ok') {
+      reservations = data.data.map(row => ({
+        id: String(row['ID'] || ''),
+        name: row['Клиент'] || '',
+        phone: row['Телефон'] || '',
+        date: row['Дата'] || '',
+        time: row['Час'] || '',
+        guests: parseInt(row['Гости']) || 2,
+        zone: row['Зона'] || 'indoor',
+        table: row['Маса'] || '',
+        type: row['Тип'] || 'restaurant',
+        status: row['Статус'] || 'pending',
+        kaparo: row['Капаро'] || '0',
+        notes: row['Бележки'] || '',
+        createdBy: row['Създадено от'] || '',
+        duration: parseInt(row['Продължителност']) || 2,
+        kidsCount: parseInt(row['Деца']) || 0,
+        kidsDaytype: row['Ден тип'] || 'weekday',
+        kidsBirthday: row['Рожден ден'] || 'no',
+        pbPlayers: parseInt(row['Играчи']) || 0,
+        pbPackage: row['Пакет'] || '',
+        menu: row['Меню'] ? String(row['Меню']).split(',').map(Number).filter(Boolean) : [],
+      }));
+      setSyncStatus('ok', '✓ Синхронизирано');
+      renderAll();
+    } else {
+      setSyncStatus('err','Грешка: ' + (data.message||''));
+    }
+  } catch(e) {
+    setSyncStatus('err','Офлайн режим');
+    showToast('Работи в офлайн режим', 'error');
+  }
+}
+
+async function saveToSheets(res) {
+  try {
+    const params = {
+      action: editingId ? 'update' : 'save',
+      id: res.id,
+      name: res.name, phone: res.phone, date: res.date, time: res.time,
+      guests: res.guests, zone: res.zone, table: res.table, type: res.type,
+      status: res.status, kaparo: res.kaparo, notes: res.notes,
+      createdBy: res.createdBy, duration: res.duration,
+      kidsCount: res.kidsCount, kidsDaytype: res.kidsDaytype,
+      kidsBirthday: res.kidsBirthday, pbPlayers: res.pbPlayers,
+      pbPackage: res.pbPackage, menu: res.menu.join(',')
+    };
+    const data = await apiCall(params);
+    if (data.status === 'ok') {
+      setSyncStatus('ok','✓ Запазено в облака');
+    } else {
+      setSyncStatus('err','Грешка при запис');
+    }
+  } catch(e) {
+    setSyncStatus('err','Не е запазено в облака');
+    showToast('Не е запазено в облака!', 'error');
+  }
+}
+
+async function updateStatusInSheets(id, status) {
+  const r = reservations.find(x => x.id == id);
+  if (!r) return;
+  try {
+    await apiCall({action:'update', ...r, menu: r.menu.join(','), status: status});
+    setSyncStatus('ok','✓ Запазено');
+  } catch(e) { setSyncStatus('err','Не е запазено'); }
+}
+
+function setSyncStatus(type, msg) {
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncStatus');
+  dot.className = 'sync-dot ' + type;
+  txt.textContent = msg;
+}
+
+// ====== LOGIN ======
+function quickLogin(name) {
+  document.getElementById('loginUser').value = name;
+  document.getElementById('loginPass').value = '1234';
+}
+function doLogin() {
+  const n = document.getElementById('loginUser').value.trim();
+  if (!n) { showToast('Въведи потребителско име','error'); return; }
+  const u = users.find(x => x.name === n) || {name:n, role:'waiter'};
+  currentUser = u;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('sidebarName').textContent = u.name;
+  document.getElementById('sidebarRole').textContent = roleLabels[u.role] || 'Служител';
+  document.getElementById('sidebarInitial').textContent = u.name.charAt(0).toUpperCase();
+  if (u.role !== 'manager') document.getElementById('usersNav').style.display = 'none';
+  showToast('Добре дошъл, ' + u.name + '! 👋','success');
+  init();
+}
+function doLogout() {
+  currentUser = null;
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// ====== INIT ======
+function init() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('dateBadge').textContent = formatDateBG(today);
+  document.getElementById('floorDate').value = today;
+  document.getElementById('floorTime').value = new Date().toTimeString().slice(0,5);
+  loadFromSheets();
+}
+
+function renderAll() {
+  updateStats();
+  renderDashboard();
+  renderReservations();
+  renderKids();
+  renderPaintball();
+  renderFloorPlan();
+  renderMenuView();
+  renderUsers();
+  updatePendingBadge();
+}
+
+// ====== DATE ======
+function formatDateBG(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  const months = ['','Ян.','Фев.','Мар.','Апр.','Май','Юни','Юли','Авг.','Сеп.','Окт.','Ное.','Дек.'];
+  return `${parseInt(day)} ${months[parseInt(m)]} ${y}`;
+}
+
+// ====== STATS ======
+function updateStats() {
+  const today = new Date().toISOString().slice(0,10);
+  const todayRes = reservations.filter(r => r.date === today && r.status !== 'cancelled');
+  const pending = reservations.filter(r => r.status === 'pending');
+  const guests = todayRes.reduce((s,r) => s + (parseInt(r.guests)||0), 0);
+  const kaparo = todayRes.reduce((s,r) => s + (parseFloat(r.kaparo)||0), 0);
+  document.getElementById('stat-today').textContent = todayRes.length;
+  document.getElementById('stat-pending').textContent = pending.length;
+  document.getElementById('stat-guests').textContent = guests;
+  document.getElementById('stat-kaparo').textContent = kaparo.toFixed(0);
+}
+
+function updatePendingBadge() {
+  const c = reservations.filter(r => r.status === 'pending').length;
+  const b = document.getElementById('pendingBadge');
+  b.textContent = c;
+  b.style.display = c > 0 ? '' : 'none';
+}
+
+// ====== DASHBOARD ======
+function renderDashboard() {
+  const today = new Date().toISOString().slice(0,10);
+  const todayRes = reservations.filter(r => r.date === today && r.status !== 'cancelled')
+    .sort((a,b) => a.time.localeCompare(b.time));
+
+  document.getElementById('dashToday').innerHTML = todayRes.length
+    ? `<table><thead><tr><th>Клиент</th><th>Час</th><th>Гости</th><th>Зона</th><th>Маса</th><th>Статус</th></tr></thead><tbody>
+    ${todayRes.map(r=>`<tr>
+      <td><strong>${r.name}</strong></td>
+      <td style="font-weight:700;color:var(--forest)">${r.time}</td>
+      <td>${r.guests}</td>
+      <td>${zoneLabels[r.zone]||r.zone}</td>
+      <td>${r.table||'—'}</td>
+      <td><span class="badge ${statusClasses[r.status]}">${statusLabels[r.status]}</span></td>
+    </tr>`).join('')}
+    </tbody></table>`
+    : `<div class="empty-state"><div class="empty-state-icon">🌅</div><h3>Няма резервации за днес</h3></div>`;
+
+  // Occupancy summary
+  const allTables = [...TABLES.indoor, ...TABLES.garden];
+  const occupiedIds = new Set(todayRes.map(r => r.table));
+  const free = allTables.filter(t => !occupiedIds.has(t.id)).length;
+  const occupied = allTables.filter(t => occupiedIds.has(t.id)).length;
+  document.getElementById('dashOccupancy').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div style="text-align:center;padding:14px;background:rgba(39,174,96,0.08);border-radius:10px;border:1px solid rgba(39,174,96,0.2)">
+        <div style="font-size:1.8rem;font-weight:700;color:#1e8449">${free}</div>
+        <div style="font-size:0.74rem;color:var(--text-light)">Свободни маси</div>
+      </div>
+      <div style="text-align:center;padding:14px;background:rgba(192,57,43,0.07);border-radius:10px;border:1px solid rgba(192,57,43,0.15)">
+        <div style="font-size:1.8rem;font-weight:700;color:var(--danger)">${occupied}</div>
+        <div style="font-size:0.74rem;color:var(--text-light)">Заети маси</div>
+      </div>
+    </div>
+    <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center" onclick="showView('floorplan')">🗺️ Виж пълен план</button>
+  `;
+}
+
+// ====== FLOOR PLAN ======
+function renderFloorPlan() {
+  const date = document.getElementById('floorDate').value;
+  const time = document.getElementById('floorTime').value;
+
+  const activeRes = reservations.filter(r => {
+    if (r.date !== date || r.status === 'cancelled') return false;
+    if (!time) return true;
+    const start = r.time;
+    const dur = parseInt(r.duration) || 2;
+    const endH = parseInt(start.split(':')[0]) + dur;
+    const endTime = endH.toString().padStart(2,'0') + ':' + start.split(':')[1];
+    return time >= start && time <= endTime;
+  });
+
+  const occupiedMap = {};
+  activeRes.forEach(r => { if(r.table) occupiedMap[r.table] = r; });
+
+  ['indoor','garden'].forEach(zone => {
+    const el = document.getElementById('tables-' + zone);
+    if (!el) return;
+    el.innerHTML = TABLES[zone].map(t => {
+      const res = occupiedMap[t.id];
+      const cls = res ? 'occupied' : 'free';
+      return `<div class="table-chip ${cls}" onclick="showTableDetail('${t.id}','${zone}')">
+        <div class="table-chip-num">№${t.num}</div>
+        <div class="table-chip-cap">${t.cap}${t.note?'/'+t.note:''} м.</div>
+        ${res ? `<div style="font-size:0.62rem;margin-top:2px">${res.name.split(' ')[0]}</div>` : ''}
+      </div>`;
+    }).join('');
+  });
+}
+
+function showTableDetail(tableId, zone) {
+  const date = document.getElementById('floorDate').value;
+  const tableRes = reservations.filter(r => r.table === tableId && r.date === date && r.status !== 'cancelled');
+  const table = TABLES[zone]?.find(t => t.id === tableId);
+  const el = document.getElementById('tableDetail');
+  const title = document.getElementById('tableDetailTitle');
+  const content = document.getElementById('tableDetailContent');
+  title.textContent = `Маса №${table?.num || tableId} · ${table?.cap || '?'} места`;
+  content.innerHTML = tableRes.length
+    ? tableRes.map(r => `<div style="padding:10px;border:1px solid var(--border);border-radius:8px;margin-top:10px">
+        <strong>${r.name}</strong> · ${r.time} · ${r.guests} гости · ${r.duration||2} часа
+        <span class="badge ${statusClasses[r.status]}" style="margin-left:8px">${statusLabels[r.status]}</span>
+        ${r.notes?`<div style="font-size:0.78rem;color:var(--text-light);margin-top:4px">${r.notes}</div>`:''}
+      </div>`).join('')
+    : `<div style="color:var(--text-light);font-size:0.84rem;margin-top:10px">Свободна маса за ${formatDateBG(date)}</div>`;
+  el.style.display = 'block';
+}
+
+// ====== RESERVATIONS TABLE ======
+function resRow(r) {
+  const menuNames = (r.menu||[]).map(id => menuItems.find(m=>m.id==id)?.name).filter(Boolean).join(', ');
+  return `<tr>
+    <td><div style="font-weight:500">${r.name}</div><div style="font-size:0.73rem;color:var(--text-light)">${r.phone}</div></td>
+    <td><div>${formatDateBG(r.date)}</div><strong style="color:var(--forest)">${r.time}</strong>${r.duration?`<div style="font-size:0.7rem;color:var(--text-light)">${r.duration}ч.</div>`:''}</td>
+    <td>${zoneLabels[r.zone]||r.zone||'—'}</td>
+    <td style="text-align:center"><strong>${r.table||'—'}</strong></td>
+    <td style="text-align:center">${r.guests}</td>
+    <td>${r.kaparo && r.kaparo!='0' ? `<span style="color:var(--gold-dark);font-weight:600">${r.kaparo} лв.</span>` : '—'}</td>
+    <td style="font-size:0.78rem;color:var(--text-mid);max-width:120px;overflow:hidden;text-overflow:ellipsis">${menuNames||r.notes||'—'}</td>
+    <td><span class="badge ${statusClasses[r.status]}">${statusLabels[r.status]}</span></td>
+    <td>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        ${r.status==='pending'?`<button class="btn btn-xs btn-gold" onclick="changeStatus('${r.id}','confirmed')">✅</button>`:''}
+        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-outline" onclick="editReservation('${r.id}')">✏️</button>`:''}
+        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-danger" onclick="changeStatus('${r.id}','cancelled')">✗</button>`:''}
+      </div>
+    </td>
+  </tr>`;
+}
+
+function resTableHTML(list) {
+  if (!list.length) return `<div class="empty-state"><div class="empty-state-icon">📋</div><h3>Няма резервации</h3></div>`;
+  return `<table><thead><tr><th>Клиент</th><th>Дата/Час</th><th>Зона</th><th>Маса</th><th>Гости</th><th>Капаро</th><th>Бележки</th><th>Статус</th><th>Действия</th></tr></thead><tbody>${list.map(resRow).join('')}</tbody></table>`;
+}
+
+function renderReservations() {
+  const search = (document.getElementById('searchInput')?.value||'').toLowerCase();
+  const dateF = document.getElementById('filterDate')?.value||'';
+  const zoneF = document.getElementById('filterZone')?.value||'';
+
+  let filtered = reservations.filter(r => {
+    if (search && !r.name.toLowerCase().includes(search) && !(r.phone||'').includes(search)) return false;
+    if (dateF && r.date !== dateF) return false;
+    if (zoneF && r.zone !== zoneF) return false;
+    return true;
+  });
+
+  const sorted = [...filtered].sort((a,b) => a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+  const confirmed = sorted.filter(r=>r.status==='confirmed');
+  const pending = sorted.filter(r=>r.status==='pending');
+  const cancelled = sorted.filter(r=>r.status==='cancelled');
+
+  document.getElementById('cnt-all').textContent = sorted.length;
+  document.getElementById('cnt-confirmed').textContent = confirmed.length;
+  document.getElementById('cnt-pending').textContent = pending.length;
+  document.getElementById('cnt-cancelled').textContent = cancelled.length;
+
+  document.getElementById('resTable-all').innerHTML = resTableHTML(sorted);
+  document.getElementById('resTable-confirmed').innerHTML = resTableHTML(confirmed);
+  document.getElementById('resTable-pending').innerHTML = resTableHTML(pending);
+  document.getElementById('resTable-cancelled').innerHTML = resTableHTML(cancelled);
+
+  // Update date filter
+  const dates = [...new Set(reservations.map(r=>r.date))].sort();
+  const sel = document.getElementById('filterDate');
+  if (sel) {
+    const curr = sel.value;
+    sel.innerHTML = '<option value="">📅 Всички дати</option>' + dates.map(d=>`<option value="${d}" ${d===curr?'selected':''}>${formatDateBG(d)}</option>`).join('');
+  }
+}
+
+// ====== KIDS ======
+function renderKids() {
+  const kidsRes = reservations.filter(r => r.zone === 'kids');
+  document.getElementById('kidsTable').innerHTML = kidsRes.length
+    ? `<table><thead><tr><th>Клиент</th><th>Дата/Час</th><th>Деца</th><th>Тип ден</th><th>Рожден ден</th><th>Капаро</th><th>Статус</th><th>Действия</th></tr></thead><tbody>
+    ${kidsRes.map(r=>`<tr>
+      <td><strong>${r.name}</strong><div style="font-size:0.73rem;color:var(--text-light)">${r.phone}</div></td>
+      <td>${formatDateBG(r.date)}<br><strong style="color:var(--forest)">${r.time}</strong></td>
+      <td>${r.kidsCount||'—'}</td>
+      <td>${r.kidsDaytype==='weekend'?'🎉 Уикенд':'📅 Делник'}</td>
+      <td>${r.kidsBirthday==='yes'?'🎂 Да':'—'}</td>
+      <td>${r.kaparo&&r.kaparo!='0'?`<span style="font-weight:600;color:var(--gold-dark)">${r.kaparo} лв.</span>`:'—'}</td>
+      <td><span class="badge ${statusClasses[r.status]}">${statusLabels[r.status]}</span></td>
+      <td><div style="display:flex;gap:5px">
+        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-outline" onclick="editReservation('${r.id}')">✏️</button>`:''}
+        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-danger" onclick="changeStatus('${r.id}','cancelled')">✗</button>`:''}
+      </div></td>
+    </tr>`).join('')}
+    </tbody></table>`
+    : `<div class="empty-state"><div class="empty-state-icon">🎠</div><h3>Няма резервации за детски център</h3></div>`;
+}
+
+// ====== PAINTBALL ======
+function renderPaintball() {
+  const pbRes = reservations.filter(r => r.zone === 'paintball');
+  document.getElementById('paintballTable').innerHTML = pbRes.length
+    ? `<table><thead><tr><th>Клиент</th><th>Дата/Час</th><th>Играчи</th><th>Пакет</th><th>Капаро</th><th>Статус</th><th>Действия</th></tr></thead><tbody>
+    ${pbRes.map(r=>`<tr>
+      <td><strong>${r.name}</strong><div style="font-size:0.73rem;color:var(--text-light)">${r.phone}</div></td>
+      <td>${formatDateBG(r.date)}<br><strong style="color:var(--paintball)">${r.time}</strong></td>
+      <td>${r.pbPlayers||'—'}</td>
+      <td>${r.pbPackage||'—'}</td>
+      <td>${r.kaparo&&r.kaparo!='0'?`<span style="font-weight:600;color:var(--gold-dark)">${r.kaparo} лв.</span>`:'—'}</td>
+      <td><span class="badge ${statusClasses[r.status]}">${statusLabels[r.status]}</span></td>
+      <td><div style="display:flex;gap:5px">
+        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-outline" onclick="editReservation('${r.id}')">✏️</button>`:''}
+        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-danger" onclick="changeStatus('${r.id}','cancelled')">✗</button>`:''}
+      </div></td>
+    </tr>`).join('')}
+    </tbody></table>`
+    : `<div class="empty-state"><div class="empty-state-icon">🎯</div><h3>Няма резервации за пейнтбол</h3></div>`;
+}
+
+// ====== MENU VIEW ======
+function renderMenuView() {
+  const cats = ['all', ...new Set(menuItems.map(m=>m.cat))];
+  document.getElementById('menuCats').innerHTML = cats.map(c=>`<button class="menu-cat-btn ${activeMenuCat===c?'active':''}" onclick="setMenuCat('${c}')">${c==='all'?'Всички':c}</button>`).join('');
+  const filtered = activeMenuCat==='all' ? menuItems : menuItems.filter(m=>m.cat===activeMenuCat);
+  document.getElementById('menuGrid').innerHTML = filtered.map(m=>`
+    <div class="menu-item">
+      <div class="menu-item-cat">${m.cat}</div>
+      <div class="menu-item-name">${m.name}</div>
+      <div class="menu-item-price">${m.price.toFixed(2)} лв.</div>
+      <div style="margin-top:8px"><button class="btn btn-xs btn-danger" onclick="deleteMenuItem(${m.id})">Изтрий</button></div>
+    </div>`).join('');
+}
+function setMenuCat(c) { activeMenuCat=c; renderMenuView(); }
+
+// ====== USERS ======
+function renderUsers() {
+  const avatarClasses = ['avatar-green','avatar-gold','avatar-orange','avatar-purple'];
+  document.getElementById('usersList').innerHTML = users.map((u,i)=>`
+    <div class="user-card">
+      <div class="user-card-avatar ${avatarClasses[i%4]}">${u.name.charAt(0)}</div>
+      <div style="flex:1"><div style="font-weight:500;font-size:0.9rem">${u.name}</div><div style="font-size:0.75rem;color:var(--text-light)">${roleLabels[u.role]||u.role}</div></div>
+      ${u.id!==currentUser?.id?`<button class="btn btn-xs btn-danger" onclick="deleteUser(${u.id})">Изтрий</button>`:'<span class="badge badge-confirmed">Ти</span>'}
+    </div>`).join('');
+}
+
+// ====== NAVIGATION ======
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  const titles = {dashboard:'Табло',reservations:'Резервации',floorplan:'План на залата',kids:'Детски Център',paintball:'Пейнтбол',menu:'Меню',users:'Потребители'};
+  document.getElementById('topbarTitle').textContent = titles[id]||'';
+  document.querySelectorAll('.nav-item').forEach(n=>{if(n.getAttribute('onclick')===`showView('${id}')`)n.classList.add('active');});
+  closeSidebar();
+}
+
+function switchTab(btn, tabId) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+// ====== SIDEBAR MOBILE ======
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open'); }
+
+// ====== MODALS ======
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function updateTableOptions() {
+  const zone = document.getElementById('f-zone').value;
+  const sel = document.getElementById('f-table');
+  const tables = TABLES[zone] || [];
+  sel.innerHTML = tables.map(t=>`<option value="${t.id}">№${t.num} (${t.cap}${t.note?' '+t.note:''} м.)</option>`).join('');
+  document.getElementById('kidsFields').style.display = zone==='kids'?'block':'none';
+  document.getElementById('paintballFields').style.display = zone==='paintball'?'block':'none';
+}
+
+function openNewReservation(zone) {
+  editingId = null;
+  document.getElementById('resModalTitle').textContent = 'Нова Резервация';
+  document.getElementById('f-name').value='';
+  document.getElementById('f-phone').value='';
+  document.getElementById('f-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('f-time').value='13:00';
+  document.getElementById('f-guests').value=2;
+  document.getElementById('f-duration').value=2;
+  document.getElementById('f-zone').value=zone||'indoor';
+  document.getElementById('f-status').value='confirmed';
+  document.getElementById('f-notes').value='';
+  document.getElementById('f-kaparo').value=0;
+  document.getElementById('f-kaparo-status').value='none';
+  document.getElementById('f-createdby').value=currentUser?.name||'';
+  document.getElementById('f-kids-count').value=1;
+  document.getElementById('f-kids-daytype').value='weekday';
+  document.getElementById('f-kids-birthday').value='no';
+  document.getElementById('f-pb-players').value=6;
+  selectedMenuItems=[];
+  updateTableOptions();
+  renderModalMenu();
+  openModal('resModal');
+}
+
+function editReservation(id) {
+  const r = reservations.find(x=>x.id==id);
+  if (!r) return;
+  editingId = id;
+  document.getElementById('resModalTitle').textContent='Редактирай Резервация';
+  document.getElementById('f-name').value=r.name||'';
+  document.getElementById('f-phone').value=r.phone||'';
+  document.getElementById('f-date').value=r.date||'';
+  document.getElementById('f-time').value=r.time||'';
+  document.getElementById('f-guests').value=r.guests||2;
+  document.getElementById('f-duration').value=r.duration||2;
+  document.getElementById('f-zone').value=r.zone||'indoor';
+  document.getElementById('f-status').value=r.status||'confirmed';
+  document.getElementById('f-notes').value=r.notes||'';
+  document.getElementById('f-kaparo').value=r.kaparo||0;
+  document.getElementById('f-kaparo-status').value=r.kaparoStatus||'none';
+  document.getElementById('f-createdby').value=r.createdBy||'';
+  document.getElementById('f-kids-count').value=r.kidsCount||1;
+  document.getElementById('f-kids-daytype').value=r.kidsDaytype||'weekday';
+  document.getElementById('f-kids-birthday').value=r.kidsBirthday||'no';
+  document.getElementById('f-pb-players').value=r.pbPlayers||6;
+  document.getElementById('f-pb-package').value=r.pbPackage||'Стандарт';
+  selectedMenuItems=[...(r.menu||[])];
+  updateTableOptions();
+  document.getElementById('f-table').value=r.table||'';
+  renderModalMenu();
+  openModal('resModal');
+}
+
+async function saveReservation() {
+  const name=document.getElementById('f-name').value.trim();
+  const phone=document.getElementById('f-phone').value.trim();
+  const date=document.getElementById('f-date').value;
+  const time=document.getElementById('f-time').value;
+  if (!name||!phone||!date||!time){showToast('Попълни задължителните полета','error');return;}
+  
+  document.getElementById('saveBtn').textContent='⏳ Запазва...';
+  document.getElementById('saveBtn').disabled=true;
+
+  const res = {
+    id: editingId || Date.now().toString(),
+    name,phone,date,time,
+    guests:parseInt(document.getElementById('f-guests').value)||2,
+    duration:parseInt(document.getElementById('f-duration').value)||2,
+    zone:document.getElementById('f-zone').value,
+    table:document.getElementById('f-table').value,
+    type:document.getElementById('f-zone').value,
+    status:document.getElementById('f-status').value,
+    notes:document.getElementById('f-notes').value,
+    kaparo:document.getElementById('f-kaparo').value,
+    kaparoStatus:document.getElementById('f-kaparo-status').value,
+    createdBy:currentUser?.name||'',
+    kidsCount:parseInt(document.getElementById('f-kids-count').value)||0,
+    kidsDaytype:document.getElementById('f-kids-daytype').value,
+    kidsBirthday:document.getElementById('f-kids-birthday').value,
+    pbPlayers:parseInt(document.getElementById('f-pb-players').value)||0,
+    pbPackage:document.getElementById('f-pb-package').value,
+    menu:[...selectedMenuItems],
+  };
+
+  if (editingId) {
+    const i = reservations.findIndex(x=>x.id==editingId);
+    if(i>=0) reservations[i]={...reservations[i],...res};
+    showToast('Резервацията е обновена ✅','success');
+  } else {
+    reservations.push(res);
+    showToast('Резервацията е добавена ✅','success');
+  }
+
+  await saveToSheets(res);
+  document.getElementById('saveBtn').textContent='💾 Запази';
+  document.getElementById('saveBtn').disabled=false;
+  closeModal('resModal');
+  renderAll();
+}
+
+async function changeStatus(id, status) {
+  const r = reservations.find(x=>x.id==id);
+  if (!r) return;
+  r.status=status;
+  const msgs={confirmed:'Потвърдена ✅',cancelled:'Отказана'};
+  showToast(msgs[status]||'Обновено', status==='confirmed'?'success':'');
+  await updateStatusInSheets(id, status);
+  renderAll();
+}
+
+// ====== MODAL MENU ======
+function renderModalMenu() {
+  const cats=['all',...new Set(menuItems.map(m=>m.cat))];
+  document.getElementById('modalMenuCats').innerHTML=cats.map(c=>`<button class="menu-cat-btn ${c==='all'?'active':''}" onclick="setModalMenuCat(this,'${c}')">${c==='all'?'Всички':c}</button>`).join('');
+  renderModalMenuGrid('all');
+}
+function setModalMenuCat(btn,cat){btn.closest('.menu-categories').querySelectorAll('.menu-cat-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderModalMenuGrid(cat);}
+function renderModalMenuGrid(cat){
+  const filtered=cat==='all'?menuItems:menuItems.filter(m=>m.cat===cat);
+  document.getElementById('modalMenuGrid').innerHTML=filtered.map(m=>`
+    <div class="menu-item ${selectedMenuItems.includes(m.id)?'selected':''}" onclick="toggleMenuItem(${m.id})">
+      <div class="menu-check">✓</div>
+      <div class="menu-item-cat">${m.cat}</div>
+      <div class="menu-item-name">${m.name}</div>
+      <div class="menu-item-price">${m.price.toFixed(2)} лв.</div>
+    </div>`).join('');
+  renderOrderSummary();
+}
+function toggleMenuItem(id){
+  const i=selectedMenuItems.indexOf(id);
+  if(i>=0)selectedMenuItems.splice(i,1);else selectedMenuItems.push(id);
+  const activeCat=document.querySelector('#modalMenuCats .menu-cat-btn.active');
+  const cat=activeCat?(activeCat.textContent==='Всички'?'all':activeCat.textContent):'all';
+  renderModalMenuGrid(cat);
+}
+function renderOrderSummary(){
+  const el=document.getElementById('orderSummary');
+  if(!selectedMenuItems.length){el.style.display='none';return;}
+  el.style.display='block';
+  const selected=selectedMenuItems.map(id=>menuItems.find(m=>m.id==id)).filter(Boolean);
+  const total=selected.reduce((s,m)=>s+m.price,0);
+  document.getElementById('orderItems').innerHTML=selected.map(m=>`<div class="order-row"><span>${m.name}</span><span>${m.price.toFixed(2)} лв.</span></div>`).join('')+`<div class="order-row order-total"><span>Общо</span><span>${total.toFixed(2)} лв.</span></div>`;
+}
+
+// ====== MENU MANAGEMENT ======
+function openNewMenuItem(){openModal('menuModal');}
+function saveMenuItem(){
+  const name=document.getElementById('mi-name').value.trim();
+  const cat=document.getElementById('mi-cat').value;
+  const price=parseFloat(document.getElementById('mi-price').value)||0;
+  if(!name){showToast('Въведи наименование','error');return;}
+  menuItems.push({id:Date.now(),name,cat,price});
+  showToast('Ястието е добавено ✅','success');
+  closeModal('menuModal');
+  renderMenuView();
+}
+function deleteMenuItem(id){
+  if(!confirm('Изтрий ястието?'))return;
+  menuItems=menuItems.filter(m=>m.id!==id);
+  renderMenuView();
+  showToast('Изтрито');
+}
+
+// ====== USER MANAGEMENT ======
+function openNewUser(){openModal('userModal');}
+function saveUser(){
+  const name=document.getElementById('u-name').value.trim();
+  const role=document.getElementById('u-role').value;
+  const pass=document.getElementById('u-pass').value;
+  if(!name||!pass){showToast('Попълни всички полета','error');return;}
+  users.push({id:Date.now(),name,role,pass});
+  showToast('Потребителят е добавен ✅','success');
+  closeModal('userModal');
+  renderUsers();
+}
+function deleteUser(id){
+  if(!confirm('Изтрий потребителя?'))return;
+  users=users.filter(u=>u.id!==id);
+  renderUsers();
+}
+
+// ====== PRINT ======
+function printDay() {
+  const today = new Date().toISOString().slice(0,10);
+  const todayRes = reservations.filter(r=>r.date===today&&r.status!=='cancelled').sort((a,b)=>a.time.localeCompare(b.time));
+  const win = window.open('','_blank');
+  win.document.write(`
+    <html><head><title>Програма ${formatDateBG(today)}</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;color:#222;}h1{color:#2C4A3E;border-bottom:2px solid #C9A84C;padding-bottom:8px;}table{width:100%;border-collapse:collapse;margin-top:16px;}th{background:#2C4A3E;color:#fff;padding:10px;text-align:left;font-size:12px;}td{padding:9px;border-bottom:1px solid #eee;font-size:12px;}tr:nth-child(even)td{background:#fafafa;}.badge{padding:3px 8px;border-radius:10px;font-size:11px;font-weight:bold;}.conf{background:#d4efdf;color:#196f3d;}.pend{background:#fef9e7;color:#9b7d10;}</style>
+    </head><body>
+    <h1>🍽️ Caramello Kids — Програма за ${formatDateBG(today)}</h1>
+    <p style="color:#666;font-size:13px">Отпечатано: ${new Date().toLocaleString('bg-BG')} · Общо резервации: ${todayRes.length}</p>
+    <table><thead><tr><th>Час</th><th>Клиент</th><th>Телефон</th><th>Гости</th><th>Зона</th><th>Маса</th><th>Капаро</th><th>Статус</th><th>Бележки</th></tr></thead><tbody>
+    ${todayRes.map(r=>`<tr><td><strong>${r.time}</strong></td><td>${r.name}</td><td>${r.phone}</td><td>${r.guests}</td><td>${zoneLabels[r.zone]||r.zone}</td><td>${r.table||'—'}</td><td>${r.kaparo&&r.kaparo!='0'?r.kaparo+' лв.':'—'}</td><td><span class="badge ${r.status==='confirmed'?'conf':'pend'}">${statusLabels[r.status]}</span></td><td>${r.notes||'—'}</td></tr>`).join('')}
+    </tbody></table></body></html>`);
+  win.document.close();
+  win.print();
+}
+
+// ====== TOAST ======
+function showToast(msg, type='') {
+  const c=document.getElementById('toastContainer');
+  const t=document.createElement('div');
+  t.className='toast'+(type?' toast-'+type:'');
+  t.innerHTML=`<span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>t.remove(),3200);
+}
+
+// ====== KEYBOARD ======
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));
+});
+
+// Date badge update
+setInterval(()=>{
+  const el=document.getElementById('dateBadge');
+  if(el)el.textContent=formatDateBG(new Date().toISOString().slice(0,10));
+},60000);
+</script>
+</body>
+</html>
