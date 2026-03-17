@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Онлайн Резервация — Caramello Kids</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream:#FAF6F0;--gold:#C9A84C;--gold-dark:#9B7A2E;
+  --forest:#2C4A3E;--forest-mid:#3D6355;
+  --charcoal:#2A2A2A;--text-mid:#5A5A5A;--text-light:#8A8A8A;
+  --border:rgba(201,168,76,0.2);--danger:#C0392B;--success:#27AE60;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--charcoal);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 16px 60px;}
+.booking-wrap{width:100%;max-width:560px;}
+.booking-header{text-align:center;margin-bottom:28px;}
+.booking-logo{font-family:'Playfair Display',serif;font-size:1.7rem;color:var(--forest);font-weight:700;}
+.booking-logo span{color:var(--gold);}
+.booking-sub{font-size:0.82rem;color:var(--text-light);margin-top:4px;letter-spacing:0.06em;text-transform:uppercase;}
+.booking-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:30px 28px;box-shadow:0 8px 40px rgba(44,74,62,0.10);}
+.section-title{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--forest);margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.form-grid{display:grid;gap:14px;}
+.form-grid-2{grid-template-columns:1fr 1fr;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-label{font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-mid);}
+.form-control{padding:11px 13px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.88rem;color:var(--charcoal);background:var(--cream);outline:none;transition:border-color 0.18s,box-shadow 0.18s;width:100%;}
+.form-control:focus{border-color:var(--forest-mid);box-shadow:0 0 0 3px rgba(44,74,62,0.08);}
+textarea.form-control{resize:vertical;min-height:80px;}
+.btn{padding:13px 24px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;cursor:pointer;border:none;transition:all 0.18s;width:100%;margin-top:6px;}
+.btn-primary{background:var(--forest);color:#fff;}.btn-primary:hover{background:var(--forest-mid);}
+.btn-primary:disabled{opacity:0.6;cursor:not-allowed;}
+.alert{border-radius:10px;padding:14px 18px;margin-top:16px;font-size:0.86rem;line-height:1.5;}
+.alert-success{background:rgba(39,174,96,0.1);border:1px solid rgba(39,174,96,0.3);color:#196f3d;}
+.alert-error{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.2);color:var(--danger);}
+.confirm-box{text-align:center;padding:20px 0;}
+.confirm-icon{font-size:3rem;margin-bottom:12px;}
+.confirm-title{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--forest);margin-bottom:8px;}
+.confirm-text{font-size:0.86rem;color:var(--text-mid);line-height:1.6;}
+.booking-footer{text-align:center;margin-top:24px;font-size:0.73rem;color:var(--text-light);}
+@media(max-width:500px){
+  .form-grid-2{grid-template-columns:1fr;}
+  .booking-card{padding:22px 16px;}
+}
+</style>
+</head>
+<body>
+
+<div class="booking-wrap">
+  <div class="booking-header">
+    <div class="booking-logo">Caramello <span>Kids</span></div>
+    <div class="booking-sub">Онлайн резервация</div>
+  </div>
+
+  <div class="booking-card">
+    <div class="section-title">📅 Заявете маса</div>
+
+    <form id="bookingForm" onsubmit="submitBooking(event)">
+      <div class="form-grid">
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Вашето Име *</label>
+            <input class="form-control" id="b-name" placeholder="Иван Иванов" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Телефон *</label>
+            <input class="form-control" type="tel" id="b-phone" placeholder="08X XXX XXXX" required>
+          </div>
+        </div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Дата *</label>
+            <input class="form-control" type="date" id="b-date" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Час *</label>
+            <input class="form-control" type="time" id="b-time" min="10:00" max="22:00" required>
+          </div>
+        </div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Зона</label>
+            <select class="form-control" id="b-zone">
+              <option value="indoor">🍽️ Вътрешна зала</option>
+              <option value="garden">🌿 Градина</option>
+              <option value="kids">🎠 Детски Център</option>
+              <option value="paintball">🎯 Пейнтбол</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Брой гости *</label>
+            <input class="form-control" type="number" id="b-guests" min="1" max="50" value="2" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Съобщение / Пожелание</label>
+          <textarea class="form-control" id="b-notes" placeholder="Алергии, специални желания, повод..."></textarea>
+        </div>
+        <div id="alertBox"></div>
+        <button type="submit" class="btn btn-primary" id="submitBtn">📅 Изпрати заявка</button>
+      </div>
+    </form>
+
+    <div id="confirmBox" style="display:none">
+      <div class="confirm-box">
+        <div class="confirm-icon">✅</div>
+        <div class="confirm-title">Заявката е изпратена!</div>
+        <div class="confirm-text" id="confirmDetails"></div>
+        <div class="alert alert-success" style="margin-top:16px;text-align:left">
+          Ще се свържем с Вас скоро за потвърждение.<br>
+          📞 За въпроси: <strong>Caramello Kids</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="booking-footer">© Caramello Kids · Всички права запазени</div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://mfybnoicfkokalwzmebb.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1meWJub2ljZmtva2Fsd3ptZWJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMzkzMjgsImV4cCI6MjA4ODcxNTMyOH0.M3PsS5qYhGqyX11vTi5SU4oL-n6p8Opjv4SzFu9szUA';
+
+// Disable past dates
+document.getElementById('b-date').min = new Date().toISOString().slice(0, 10);
+document.getElementById('b-date').value = new Date().toISOString().slice(0, 10);
+
+const zoneNames = {indoor:'🍽️ Вътрешна зала', garden:'🌿 Градина', kids:'🎠 Детски Център', paintball:'🎯 Пейнтбол'};
+const months = ['','Яну','Фев','Мар','Апр','Май','Юни','Юли','Авг','Сеп','Окт','Ное','Дек'];
+function fmtDate(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  return `${parseInt(day)} ${months[parseInt(m)]} ${y}`;
+}
+
+function showAlert(msg, type) {
+  const el = document.getElementById('alertBox');
+  el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+}
+
+async function submitBooking(e) {
+  e.preventDefault();
+  const name   = document.getElementById('b-name').value.trim();
+  const phone  = document.getElementById('b-phone').value.trim();
+  const date   = document.getElementById('b-date').value;
+  const time   = document.getElementById('b-time').value;
+  const zone   = document.getElementById('b-zone').value;
+  const guests = document.getElementById('b-guests').value;
+  const notes  = document.getElementById('b-notes').value.trim();
+
+  if (!name || !phone || !date || !time) {
+    showAlert('Моля попълнете всички задължителни полета.', 'error');
+    return;
+  }
+  if (phone.replace(/\D/g,'').length < 9) {
+    showAlert('Невалиден телефонен номер.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Изпраща се...';
+
+  try {
+    const body = {
+      name, phone, date, time,
+      zone, guests: String(guests),
+      notes, status: 'pending',
+      created_by: 'online', duration: '2'
+    };
+    const res = await fetch(SUPABASE_URL + '/rest/v1/reservations', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(await res.text());
+
+    document.getElementById('bookingForm').style.display = 'none';
+    document.getElementById('confirmBox').style.display = 'block';
+    document.getElementById('confirmDetails').innerHTML =
+      `<strong>${name}</strong><br>${fmtDate(date)} · ${time}<br>${zoneNames[zone]} · ${guests} гости`;
+  } catch (err) {
+    showAlert('Грешка при изпращане. Моля опитайте отново.', 'error');
+    btn.disabled = false;
+    btn.textContent = '📅 Изпрати заявка';
+  }
+}
+</script>
+</body>
+</html>

@@ -383,6 +383,8 @@ textarea.form-control{resize:vertical;min-height:70px;}
     <div class="nav-section-label" style="margin-top:6px">Анализ</div>
     <div class="nav-item" onclick="showView('analytics')"><span class="nav-icon">📈</span>Статистика</div>
     <div class="nav-item" onclick="showView('audit')"><span class="nav-icon">🕵️</span>Audit Log</div>
+    <div class="nav-section-label" style="margin-top:6px">Финанси</div>
+    <div class="nav-item" onclick="showView('kaparo')"><span class="nav-icon">💰</span>Капаро</div>
   </nav>
   <div class="sidebar-footer">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:0.75rem;color:rgba(255,255,255,0.5)">
@@ -661,6 +663,17 @@ textarea.form-control{resize:vertical;min-height:70px;}
       </div>
     </div>
 
+    <!-- KAPARO VIEW -->
+    <div class="view" id="view-kaparo">
+      <div class="stats-grid" id="kaparoStats" style="grid-template-columns:repeat(3,1fr)"></div>
+      <div class="card" style="padding:0">
+        <div class="card-header" style="padding:16px 20px 0">
+          <div class="card-title">💰 Резервации с капаро</div>
+        </div>
+        <div class="table-wrap" id="kaparoTable"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -773,6 +786,27 @@ textarea.form-control{resize:vertical;min-height:70px;}
       </div>
 
       <div class="form-group"><label class="form-label">Бележки</label><textarea class="form-control" id="f-notes" placeholder="Алергии, специални желания..."></textarea></div>
+
+      <!-- RECURRING -->
+      <div class="kaparo-box" style="background:rgba(44,74,62,0.06);border-color:rgba(44,74,62,0.2)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="checkbox" id="f-recurring" onchange="toggleRecurring(this)" style="width:16px;height:16px;cursor:pointer">
+          <label for="f-recurring" class="kaparo-label" style="margin:0;cursor:pointer">🔁 Повтарящи се резервации</label>
+        </div>
+        <div id="recurringOptions" style="display:none;margin-top:12px">
+          <div class="form-grid form-grid-2">
+            <div class="form-group"><label class="form-label">Честота</label>
+              <select class="form-control" id="f-recur-freq">
+                <option value="weekly">Всяка седмица</option>
+                <option value="monthly">Всеки месец</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Брой повторения (2–12)</label>
+              <input type="number" class="form-control" id="f-recur-count" min="2" max="12" value="4">
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('resModal')">Отказ</button>
@@ -876,6 +910,7 @@ const TABLES = {
 let currentUser = null;
 let editingId = null;
 let reservations = [];
+let lastSnapshotIds = null;
 let selectedMenuItems = [];
 let activeMenuCat = 'all';
 
@@ -955,7 +990,13 @@ async function loadFromSheets() {
   setSyncStatus('loading','Зарежда...');
   try {
     const data = await sbFetch('reservations?order=created_at.desc&limit=500');
-    reservations = (data || []).map(rowToRes);
+    const newList = (data || []).map(rowToRes);
+    if (lastSnapshotIds !== null) {
+      const added = newList.filter(r => !lastSnapshotIds.has(r.id));
+      if (added.length > 0) sendPushNotification(added);
+    }
+    lastSnapshotIds = new Set(newList.map(r => r.id));
+    reservations = newList;
     setSyncStatus('ok','✓ Синхронизирано');
     renderAll();
   } catch(e) {
@@ -994,6 +1035,22 @@ function setSyncStatus(type, msg) {
   txt.textContent = msg;
 }
 
+// ====== PUSH NOTIFICATIONS ======
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') await Notification.requestPermission();
+}
+function sendPushNotification(added) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const count = added.length;
+  const first = added[0];
+  const title = count === 1 ? `🆕 Нова резервация: ${first.name}` : `🆕 ${count} нови резервации`;
+  const body = count === 1
+    ? `${formatDateBG(first.date)} · ${first.time} · ${first.guests} гости`
+    : added.map(r=>`${r.name} · ${r.time}`).join('\n');
+  new Notification(title, {body, icon:'icon.png'});
+}
+
 // ====== LOGIN ======
 function quickLogin(name) {
   document.getElementById('loginUser').value = name;
@@ -1025,7 +1082,9 @@ function init() {
   document.getElementById('dateBadge').textContent = formatDateBG(today);
   document.getElementById('floorDate').value = today;
   document.getElementById('floorTime').value = new Date().toTimeString().slice(0,5);
+  requestNotificationPermission();
   loadFromSheets();
+  setInterval(loadFromSheets, 60000);
 }
 
 function renderAll() {
@@ -1039,6 +1098,7 @@ function renderAll() {
   renderUsers();
   renderAnalytics();
   renderAuditLog();
+  renderKaparo();
   updatePendingBadge();
 }
 
@@ -1304,7 +1364,7 @@ function showView(id) {
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('view-'+id).classList.add('active');
-  const titles = {dashboard:'Табло',reservations:'Резервации',floorplan:'План на залата',kids:'Детски Център',paintball:'Пейнтбол',menu:'Меню',users:'Потребители',analytics:'Статистика',audit:'Audit Log'};
+  const titles = {dashboard:'Табло',reservations:'Резервации',floorplan:'План на залата',kids:'Детски Център',paintball:'Пейнтбол',menu:'Меню',users:'Потребители',analytics:'Статистика',audit:'Audit Log',kaparo:'Капаро'};
   document.getElementById('topbarTitle').textContent = titles[id]||'';
   document.querySelectorAll('.nav-item').forEach(n=>{if(n.getAttribute('onclick')===`showView('${id}')`)n.classList.add('active');});
   closeSidebar();
@@ -1412,6 +1472,8 @@ function openNewReservation(zone) {
   document.getElementById('f-kids-daytype').value='weekday';
   document.getElementById('f-kids-birthday').value='no';
   document.getElementById('f-pb-players').value=6;
+  document.getElementById('f-recurring').checked = false;
+  document.getElementById('recurringOptions').style.display = 'none';
   selectedMenuItems=[];
   selectedTables=[];
   updateTableOptions();
@@ -1498,6 +1560,10 @@ function showConflictWarning(conflicts, freeTables, zone) {
   `);
 }
 
+function toggleRecurring(cb) {
+  document.getElementById('recurringOptions').style.display = cb.checked ? 'block' : 'none';
+}
+
 function calcKidsPrice() {
   const el = document.getElementById('kidsPrice');
   if (!el || document.getElementById('kidsFields').style.display === 'none') return;
@@ -1579,15 +1645,34 @@ async function saveReservation() {
     const i = reservations.findIndex(x=>x.id==editingId);
     if(i>=0) reservations[i]={...reservations[i],...res};
     addAuditEntry('edit', res);
+    await saveToSheets(res);
+    setKaparoStatus(res.id, res.kaparoStatus);
     showToast('Резервацията е обновена ✅','success');
   } else {
-    reservations.push(res);
-    addAuditEntry('create', res);
-    showToast('Резервацията е добавена ✅','success');
+    const isRecurring = document.getElementById('f-recurring')?.checked;
+    if (isRecurring) {
+      const freq = document.getElementById('f-recur-freq').value;
+      const n = Math.min(Math.max(parseInt(document.getElementById('f-recur-count').value)||2, 2), 12);
+      const base = new Date(res.date);
+      for (let i = 0; i < n; i++) {
+        const d = new Date(base);
+        if (freq === 'weekly') d.setDate(d.getDate() + i * 7);
+        else d.setMonth(d.getMonth() + i);
+        const clone = {...res, id:(Date.now()+i).toString(), date:d.toISOString().slice(0,10)};
+        reservations.push(clone);
+        setKaparoStatus(clone.id, clone.kaparoStatus);
+        await saveToSheets(clone);
+      }
+      addAuditEntry('create', res, `${n}x ${freq==='weekly'?'седмично':'месечно'}`);
+      showToast(`Създадени ${n} повтарящи се резервации 🔁`, 'success');
+    } else {
+      reservations.push(res);
+      addAuditEntry('create', res);
+      await saveToSheets(res);
+      setKaparoStatus(res.id, res.kaparoStatus);
+      showToast('Резервацията е добавена ✅','success');
+    }
   }
-
-  await saveToSheets(res);
-  setKaparoStatus(res.id, res.kaparoStatus);
   document.getElementById('saveBtn').textContent='💾 Запази';
   document.getElementById('saveBtn').disabled=false;
   closeModal('resModal');
@@ -1714,6 +1799,52 @@ function showToast(msg, type='', htmlContent='') {
   c.appendChild(t);
   const delay = htmlContent ? 8000 : 3200;
   setTimeout(()=>t.remove(), delay);
+}
+
+// ====== KAPARO VIEW ======
+function renderKaparo() {
+  const el = document.getElementById('kaparoTable');
+  if (!el) return;
+  const list = reservations.filter(r =>
+    (parseFloat(r.kaparo) > 0 || (r.kaparoStatus && r.kaparoStatus !== 'none')) && r.status !== 'cancelled'
+  ).sort((a,b) => a.date.localeCompare(b.date));
+
+  const total  = list.reduce((s,r) => s + (parseFloat(r.kaparo)||0), 0);
+  const paid   = list.filter(r => r.kaparoStatus === 'paid').reduce((s,r) => s + (parseFloat(r.kaparo)||0), 0);
+  const unpaid = list.filter(r => r.kaparoStatus !== 'paid').length;
+
+  const statsEl = document.getElementById('kaparoStats');
+  if (statsEl) statsEl.innerHTML = `
+    <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Очаквано общо</div><div class="stat-value">${total.toFixed(0)}</div><div class="stat-sub">лв.</div></div>
+    <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Получено</div><div class="stat-value" style="color:var(--success)">${paid.toFixed(0)}</div><div class="stat-sub">лв.</div></div>
+    <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Неплатени</div><div class="stat-value" style="color:var(--kids-orange)">${unpaid}</div><div class="stat-sub">${(total-paid).toFixed(0)} лв. чакат</div></div>`;
+
+  el.innerHTML = list.length
+    ? `<table><thead><tr><th>Клиент</th><th>Дата/Час</th><th>Зона</th><th>Капаро</th><th>Статус</th><th>Промени</th></tr></thead><tbody>
+    ${list.map(r=>`<tr>
+      <td><strong>${r.name}</strong><div style="font-size:0.73rem;color:var(--text-light)">${r.phone}</div></td>
+      <td>${formatDateBG(r.date)}<br><strong style="color:var(--forest)">${r.time}</strong></td>
+      <td>${zoneLabels[r.zone]||r.zone}</td>
+      <td><strong style="color:var(--gold-dark)">${r.kaparo} лв.</strong></td>
+      <td><span class="badge ${r.kaparoStatus==='paid'?'badge-confirmed':r.kaparoStatus==='pending'?'badge-pending':'badge-cancelled'}">${r.kaparoStatus==='paid'?'✅ Платено':r.kaparoStatus==='pending'?'⏳ Очаква':'❌ Няма'}</span></td>
+      <td><select class="filter-select" style="font-size:0.78rem;padding:5px 8px" onchange="quickKaparoStatus('${r.id}',this.value)">
+        <option value="none" ${r.kaparoStatus==='none'||!r.kaparoStatus?'selected':''}>Няма</option>
+        <option value="pending" ${r.kaparoStatus==='pending'?'selected':''}>⏳ Очаква</option>
+        <option value="paid" ${r.kaparoStatus==='paid'?'selected':''}>✅ Платено</option>
+      </select></td>
+    </tr>`).join('')}
+    </tbody></table>`
+    : `<div class="empty-state"><div class="empty-state-icon">💰</div><h3>Няма резервации с капаро</h3></div>`;
+}
+
+function quickKaparoStatus(id, status) {
+  const r = reservations.find(x => x.id == id);
+  if (!r) return;
+  r.kaparoStatus = status;
+  setKaparoStatus(id, status);
+  renderKaparo();
+  updateStats();
+  showToast('Статусът на капарото е обновен ✅', 'success');
 }
 
 // ====== AUDIT LOG ======
