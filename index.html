@@ -620,7 +620,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <div class="form-group"><label class="form-label">Дата *</label><input type="date" class="form-control" id="f-date" onchange="renderTableChips()"/></div>
         <div class="form-group"><label class="form-label">Час *</label><input type="time" class="form-control" id="f-time" onchange="renderTableChips()"/></div>
         <div class="form-group"><label class="form-label">Продължителност</label>
-          <select class="form-control" id="f-duration" onchange="renderTableChips()">
+          <select class="form-control" id="f-duration" onchange="renderTableChips();calcKidsPrice()">
             <option value="1">1 час</option><option value="2">2 часа</option><option value="3">3 часа</option>
             <option value="4">4 часа</option><option value="8">Целия ден</option>
           </select>
@@ -657,14 +657,14 @@ textarea.form-control{resize:vertical;min-height:70px;}
         <div class="kids-highlight">
           <div class="kids-label">🎈 Детски Център</div>
           <div class="form-grid form-grid-3">
-            <div class="form-group"><label class="form-label">Деца</label><input type="number" class="form-control" id="f-kids-count" min="1" max="30" value="1"/></div>
+            <div class="form-group"><label class="form-label">Деца</label><input type="number" class="form-control" id="f-kids-count" min="1" max="30" value="1" onchange="calcKidsPrice()"/></div>
             <div class="form-group"><label class="form-label">Ден</label>
-              <select class="form-control" id="f-kids-daytype">
+              <select class="form-control" id="f-kids-daytype" onchange="calcKidsPrice()">
                 <option value="weekday">Делник</option><option value="weekend">Уикенд</option>
               </select>
             </div>
             <div class="form-group"><label class="form-label">Рожден ден?</label>
-              <select class="form-control" id="f-kids-birthday"><option value="no">Не</option><option value="yes">🎂 Да</option></select>
+              <select class="form-control" id="f-kids-birthday" onchange="calcKidsPrice()"><option value="no">Не</option><option value="yes">🎂 Да</option></select>
             </div>
           </div>
           <div class="form-group" style="margin-top:10px"><label class="form-label">Изчислена цена</label>
@@ -834,6 +834,23 @@ let users = [
   {id:4,name:'Аниматор',role:'animator',pass:'3333'},
 ];
 
+// ====== LOCALSTORAGE ======
+function loadMenuFromStorage() {
+  try { const s=localStorage.getItem('caramello_menu'); if(s){const p=JSON.parse(s);if(p.length)menuItems=p;} } catch(e){}
+}
+function saveMenuToStorage() { localStorage.setItem('caramello_menu',JSON.stringify(menuItems)); }
+function loadUsersFromStorage() {
+  try { const s=localStorage.getItem('caramello_users'); if(s){const p=JSON.parse(s);if(p.length)users=p;} } catch(e){}
+}
+function saveUsersToStorage() { localStorage.setItem('caramello_users',JSON.stringify(users)); }
+function getKaparoStatusMap() { return JSON.parse(localStorage.getItem('caramello_kaparo_status')||'{}'); }
+function setKaparoStatus(id, status) {
+  const m=getKaparoStatusMap(); m[String(id)]=status;
+  localStorage.setItem('caramello_kaparo_status',JSON.stringify(m));
+}
+loadMenuFromStorage();
+loadUsersFromStorage();
+
 const roleLabels = {manager:'Администратор',waiter:'Сервитьор',reception:'Рецепция',animator:'Аниматор'};
 const statusLabels = {confirmed:'Потвърден',pending:'Чакащ',cancelled:'Отказан'};
 const statusClasses = {confirmed:'badge-confirmed',pending:'badge-pending',cancelled:'badge-cancelled'};
@@ -856,6 +873,7 @@ function rowToRes(row) {
     notes: row.notes || '',
     createdBy: row.created_by || '',
     duration: parseInt(row.duration) || 2,
+    kaparoStatus: getKaparoStatusMap()[String(row.id)] || 'none',
     kidsCount: 0, kidsDaytype: 'weekday', kidsBirthday: 'no',
     pbPlayers: 0, pbPackage: '', menu: [],
   };
@@ -920,8 +938,10 @@ function quickLogin(name) {
 }
 function doLogin() {
   const n = document.getElementById('loginUser').value.trim();
-  if (!n) { showToast('Въведи потребителско име','error'); return; }
-  const u = users.find(x => x.name === n) || {name:n, role:'waiter'};
+  const p = document.getElementById('loginPass').value;
+  if (!n || !p) { showToast('Въведи потребителско име и парола','error'); return; }
+  const u = users.find(x => x.name === n && x.pass === p);
+  if (!u) { showToast('Грешно потребителско име или парола ❌','error'); return; }
   currentUser = u;
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('sidebarName').textContent = u.name;
@@ -1328,6 +1348,7 @@ function openNewReservation(zone) {
   selectedMenuItems=[];
   selectedTables=[];
   updateTableOptions();
+  calcKidsPrice();
   renderModalMenu();
   openModal('resModal');
 }
@@ -1358,6 +1379,7 @@ function editReservation(id) {
   updateTableOptions();
   selectedTables = r.table ? r.table.split(',') : [];
   renderTableChips();
+  calcKidsPrice();
   renderModalMenu();
   openModal('resModal');
 }
@@ -1409,6 +1431,20 @@ function showConflictWarning(conflicts, freeTables, zone) {
   `);
 }
 
+function calcKidsPrice() {
+  const el = document.getElementById('kidsPrice');
+  if (!el || document.getElementById('kidsFields').style.display === 'none') return;
+  const count = parseInt(document.getElementById('f-kids-count').value) || 0;
+  const daytype = document.getElementById('f-kids-daytype').value;
+  const duration = parseInt(document.getElementById('f-duration').value) || 1;
+  const birthday = document.getElementById('f-kids-birthday').value;
+  const rates = { weekday:{1:6.85,2:12.72,3:17.60}, weekend:{1:7.82,2:14.67,3:20.54} };
+  const rateKey = Math.min(Math.max(duration,1),3);
+  const rate = (rates[daytype]||rates.weekday)[rateKey];
+  const total = count * rate;
+  el.innerHTML = `${count} деца × ${rate.toFixed(2)} лв. = <strong>${total.toFixed(2)} лв.</strong>${birthday==='yes'?' 🎂':'' }`;
+}
+
 function selectFreeTable(tableId) {
   if (!selectedTables.includes(tableId)) selectedTables.push(tableId);
   renderTableChips();
@@ -1448,6 +1484,14 @@ async function saveReservation() {
     menu:[...selectedMenuItems],
   };
 
+  // Кр.2 max 3 часа
+  if (selectedTables.includes('R2') && res.duration > 3) {
+    showToast('Кр.2 може да се резервира максимум 3 часа ⚠️','error');
+    document.getElementById('saveBtn').textContent='💾 Запази';
+    document.getElementById('saveBtn').disabled=false;
+    return;
+  }
+
   // Check table conflict for all selected tables
   if (selectedTables.length > 0) {
     let allConflicts = [];
@@ -1474,6 +1518,7 @@ async function saveReservation() {
   }
 
   await saveToSheets(res);
+  setKaparoStatus(res.id, res.kaparoStatus);
   document.getElementById('saveBtn').textContent='💾 Запази';
   document.getElementById('saveBtn').disabled=false;
   closeModal('resModal');
@@ -1532,6 +1577,7 @@ function saveMenuItem(){
   const price=parseFloat(document.getElementById('mi-price').value)||0;
   if(!name){showToast('Въведи наименование','error');return;}
   menuItems.push({id:Date.now(),name,cat,price});
+  saveMenuToStorage();
   showToast('Ястието е добавено ✅','success');
   closeModal('menuModal');
   renderMenuView();
@@ -1539,6 +1585,7 @@ function saveMenuItem(){
 function deleteMenuItem(id){
   if(!confirm('Изтрий ястието?'))return;
   menuItems=menuItems.filter(m=>m.id!==id);
+  saveMenuToStorage();
   renderMenuView();
   showToast('Изтрито');
 }
@@ -1550,7 +1597,9 @@ function saveUser(){
   const role=document.getElementById('u-role').value;
   const pass=document.getElementById('u-pass').value;
   if(!name||!pass){showToast('Попълни всички полета','error');return;}
+  if(users.find(u=>u.name===name)){showToast('Потребител с това име вече съществува','error');return;}
   users.push({id:Date.now(),name,role,pass});
+  saveUsersToStorage();
   showToast('Потребителят е добавен ✅','success');
   closeModal('userModal');
   renderUsers();
@@ -1558,6 +1607,7 @@ function saveUser(){
 function deleteUser(id){
   if(!confirm('Изтрий потребителя?'))return;
   users=users.filter(u=>u.id!==id);
+  saveUsersToStorage();
   renderUsers();
 }
 
