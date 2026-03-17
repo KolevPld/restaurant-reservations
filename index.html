@@ -255,6 +255,29 @@ textarea.form-control{resize:vertical;min-height:70px;}
 .login-chip{padding:5px 12px;border-radius:20px;font-size:0.74rem;cursor:pointer;background:var(--cream);border:1px solid var(--border);color:var(--text-mid);font-family:'DM Sans',sans-serif;transition:all 0.15s;}
 .login-chip:hover{background:var(--forest);color:#fff;border-color:var(--forest);}
 
+/* MESSAGING BUTTONS */
+.btn-viber{background:#665CAC;color:#fff;}.btn-viber:hover{background:#5549A0;}
+.btn-whatsapp{background:#25D366;color:#fff;}.btn-whatsapp:hover{background:#1DA851;}
+
+/* ANALYTICS BAR CHART */
+.bar-chart{display:flex;flex-direction:column;gap:6px;padding:4px 0;}
+.bar-row{display:flex;align-items:center;gap:8px;}
+.bar-label{width:44px;text-align:right;color:var(--text-mid);flex-shrink:0;font-size:0.71rem;}
+.bar-label-wide{width:76px;text-align:right;color:var(--text-mid);flex-shrink:0;font-size:0.71rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bar-track{flex:1;background:rgba(44,74,62,0.07);border-radius:4px;height:20px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--forest);border-radius:4px;transition:width 0.4s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;min-width:2px;}
+.bar-fill-gold{background:var(--gold);}
+.bar-fill-kids{background:var(--kids-orange);}
+.bar-count{font-size:0.68rem;font-weight:700;color:#fff;white-space:nowrap;}
+
+/* AUDIT LOG */
+.audit-entry{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(201,168,76,0.1);}
+.audit-entry:last-child{border-bottom:none;}
+.audit-icon{font-size:1rem;flex-shrink:0;width:22px;text-align:center;}
+.audit-body{flex:1;}
+.audit-action{font-weight:500;color:var(--charcoal);font-size:0.84rem;}
+.audit-meta{font-size:0.72rem;color:var(--text-light);margin-top:2px;}
+
 /* PRINT */
 @media print {
   .sidebar,.topbar,.topbar-actions,.btn,.modal-overlay,.toast-container,.hamburger,.sidebar-overlay{display:none!important;}
@@ -357,6 +380,9 @@ textarea.form-control{resize:vertical;min-height:70px;}
     <div class="nav-section-label" style="margin-top:6px">Управление</div>
     <div class="nav-item" onclick="showView('menu')"><span class="nav-icon">📋</span>Меню</div>
     <div class="nav-item" onclick="showView('users')" id="usersNav"><span class="nav-icon">👥</span>Потребители</div>
+    <div class="nav-section-label" style="margin-top:6px">Анализ</div>
+    <div class="nav-item" onclick="showView('analytics')"><span class="nav-icon">📈</span>Статистика</div>
+    <div class="nav-item" onclick="showView('audit')"><span class="nav-icon">🕵️</span>Audit Log</div>
   </nav>
   <div class="sidebar-footer">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:0.75rem;color:rgba(255,255,255,0.5)">
@@ -422,6 +448,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
           <option value="paintball">🎯 Пейнтбол</option>
         </select>
         <button class="btn btn-outline btn-sm" onclick="loadFromSheets()">🔄 Обнови</button>
+        <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇️ CSV</button>
       </div>
       <div class="card" style="padding:0">
         <div class="tab-content active" id="tab-all"><div class="table-wrap" id="resTable-all"></div></div>
@@ -595,6 +622,42 @@ textarea.form-control{resize:vertical;min-height:70px;}
       <div class="card">
         <div class="card-header"><div class="card-title">Потребители</div><button class="btn btn-primary btn-sm" onclick="openNewUser()">＋ Нов</button></div>
         <div id="usersList"></div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div class="view" id="view-analytics">
+      <div class="stats-grid" id="analyticsStats"></div>
+      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:18px;margin-bottom:18px">
+        <div class="card">
+          <div class="card-header"><div class="card-title">📊 Резервации по час</div></div>
+          <div id="chartHours"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">📅 По ден от седмицата</div></div>
+          <div id="chartWeekdays"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+        <div class="card">
+          <div class="card-header"><div class="card-title">🏆 Топ клиенти</div></div>
+          <div id="chartTopClients"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">💰 Капаро по зона</div></div>
+          <div id="chartKaparo"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUDIT LOG -->
+    <div class="view" id="view-audit">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🕵️ История на промените</div>
+          <button class="btn btn-outline btn-sm" onclick="clearAuditLog()">🗑️ Изчисти</button>
+        </div>
+        <div id="auditList"></div>
       </div>
     </div>
 
@@ -974,6 +1037,8 @@ function renderAll() {
   renderFloorPlan();
   renderMenuView();
   renderUsers();
+  renderAnalytics();
+  renderAuditLog();
   updatePendingBadge();
 }
 
@@ -1117,6 +1182,8 @@ function resRow(r) {
         ${r.status==='pending'?`<button class="btn btn-xs btn-gold" onclick="changeStatus('${r.id}','confirmed')">✅</button>`:''}
         ${r.status!=='cancelled'?`<button class="btn btn-xs btn-outline" onclick="editReservation('${r.id}')">✏️</button>`:''}
         ${r.status!=='cancelled'?`<button class="btn btn-xs btn-danger" onclick="changeStatus('${r.id}','cancelled')">✗</button>`:''}
+        <button class="btn btn-xs btn-whatsapp" onclick="sendWhatsApp('${r.id}')" title="WhatsApp">💬</button>
+        <button class="btn btn-xs btn-viber" onclick="sendViber('${r.id}')" title="Viber">📱</button>
       </div>
     </td>
   </tr>`;
@@ -1237,7 +1304,7 @@ function showView(id) {
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('view-'+id).classList.add('active');
-  const titles = {dashboard:'Табло',reservations:'Резервации',floorplan:'План на залата',kids:'Детски Център',paintball:'Пейнтбол',menu:'Меню',users:'Потребители'};
+  const titles = {dashboard:'Табло',reservations:'Резервации',floorplan:'План на залата',kids:'Детски Център',paintball:'Пейнтбол',menu:'Меню',users:'Потребители',analytics:'Статистика',audit:'Audit Log'};
   document.getElementById('topbarTitle').textContent = titles[id]||'';
   document.querySelectorAll('.nav-item').forEach(n=>{if(n.getAttribute('onclick')===`showView('${id}')`)n.classList.add('active');});
   closeSidebar();
@@ -1511,9 +1578,11 @@ async function saveReservation() {
   if (editingId) {
     const i = reservations.findIndex(x=>x.id==editingId);
     if(i>=0) reservations[i]={...reservations[i],...res};
+    addAuditEntry('edit', res);
     showToast('Резервацията е обновена ✅','success');
   } else {
     reservations.push(res);
+    addAuditEntry('create', res);
     showToast('Резервацията е добавена ✅','success');
   }
 
@@ -1529,6 +1598,7 @@ async function changeStatus(id, status) {
   const r = reservations.find(x=>x.id==id);
   if (!r) return;
   r.status=status;
+  addAuditEntry('status', r, statusLabels[status]);
   const msgs={confirmed:'Потвърдена ✅',cancelled:'Отказана'};
   showToast(msgs[status]||'Обновено', status==='confirmed'?'success':'');
   await updateStatusInSheets(id, status);
@@ -1644,6 +1714,156 @@ function showToast(msg, type='', htmlContent='') {
   c.appendChild(t);
   const delay = htmlContent ? 8000 : 3200;
   setTimeout(()=>t.remove(), delay);
+}
+
+// ====== AUDIT LOG ======
+function getAuditLog() {
+  try { return JSON.parse(localStorage.getItem('caramello_audit')||'[]'); } catch(e) { return []; }
+}
+function addAuditEntry(action, res, extra) {
+  if (!currentUser) return;
+  const icons = {create:'➕',edit:'✏️',status:'🔄',delete:'🗑️'};
+  const labels = {create:'Нова резервация',edit:'Редакция',status:'Смяна на статус',delete:'Изтриване'};
+  const log = getAuditLog();
+  log.unshift({
+    ts: new Date().toISOString(),
+    user: currentUser.name,
+    action,
+    actionLabel: labels[action]||action,
+    icon: icons[action]||'📝',
+    resId: res?.id||'',
+    details: res ? `${res.name} · ${formatDateBG(res.date)} · ${res.time}` : '',
+    extra: extra||''
+  });
+  if (log.length > 200) log.splice(200);
+  localStorage.setItem('caramello_audit', JSON.stringify(log));
+}
+function clearAuditLog() {
+  if (!confirm('Изчисти целия Audit Log?')) return;
+  localStorage.removeItem('caramello_audit');
+  renderAuditLog();
+}
+function renderAuditLog() {
+  const el = document.getElementById('auditList');
+  if (!el) return;
+  const log = getAuditLog();
+  el.innerHTML = log.length
+    ? log.map(e=>`<div class="audit-entry">
+        <span class="audit-icon">${e.icon}</span>
+        <div class="audit-body">
+          <div class="audit-action">${e.actionLabel}${e.extra?' — <em>'+e.extra+'</em>':''}</div>
+          <div class="audit-meta">${e.details} · <strong>${e.user}</strong> · ${new Date(e.ts).toLocaleString('bg-BG')}</div>
+        </div>
+      </div>`).join('')
+    : `<div class="empty-state"><div class="empty-state-icon">📋</div><h3>Няма записи</h3></div>`;
+}
+
+// ====== ANALYTICS ======
+function renderAnalytics() {
+  const el = document.getElementById('analyticsStats');
+  if (!el) return;
+  const active = reservations.filter(r => r.status !== 'cancelled');
+  const totalKaparo = active.reduce((s,r)=>s+(parseFloat(r.kaparo)||0),0);
+  const uniqueClients = new Set(active.map(r=>r.phone)).size;
+  el.innerHTML = `
+    <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-label">Всички резервации</div><div class="stat-value">${active.length}</div></div>
+    <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Общо гости</div><div class="stat-value">${active.reduce((s,r)=>s+(parseInt(r.guests)||0),0)}</div></div>
+    <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Капаро общо</div><div class="stat-value">${totalKaparo.toFixed(0)}</div><div class="stat-sub">лв.</div></div>
+    <div class="stat-card"><div class="stat-icon">🧑</div><div class="stat-label">Уникални клиенти</div><div class="stat-value">${uniqueClients}</div></div>`;
+
+  // Резервации по час
+  const hourCounts = {};
+  for (let h=10;h<=23;h++) hourCounts[h]=0;
+  active.forEach(r=>{ const h=parseInt((r.time||'').split(':')[0]); if(h>=10&&h<=23) hourCounts[h]++; });
+  const maxH = Math.max(...Object.values(hourCounts),1);
+  document.getElementById('chartHours').innerHTML = '<div class="bar-chart">' +
+    Object.entries(hourCounts).map(([h,cnt])=>`<div class="bar-row">
+      <span class="bar-label">${h}:00</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${(cnt/maxH*100).toFixed(1)}%">${cnt>0?`<span class="bar-count">${cnt}</span>`:''}</div></div>
+    </div>`).join('')+'</div>';
+
+  // По ден от седмицата
+  const dayNames=['Нед','Пон','Вт','Ср','Чет','Пет','Съб'];
+  const dayCounts=[0,0,0,0,0,0,0];
+  active.forEach(r=>{ if(r.date){ const d=new Date(r.date).getDay(); dayCounts[d]++; } });
+  const maxD=Math.max(...dayCounts,1);
+  document.getElementById('chartWeekdays').innerHTML = '<div class="bar-chart">' +
+    dayCounts.map((cnt,i)=>`<div class="bar-row">
+      <span class="bar-label">${dayNames[i]}</span>
+      <div class="bar-track"><div class="bar-fill bar-fill-gold" style="width:${(cnt/maxD*100).toFixed(1)}%">${cnt>0?`<span class="bar-count">${cnt}</span>`:''}</div></div>
+    </div>`).join('')+'</div>';
+
+  // Топ клиенти
+  const clientMap={};
+  active.forEach(r=>{ if(!clientMap[r.phone]) clientMap[r.phone]={name:r.name,count:0}; clientMap[r.phone].count++; });
+  const topClients=Object.values(clientMap).sort((a,b)=>b.count-a.count).slice(0,8);
+  const maxC=topClients[0]?.count||1;
+  document.getElementById('chartTopClients').innerHTML = topClients.length
+    ? '<div class="bar-chart">'+topClients.map(c=>`<div class="bar-row">
+        <span class="bar-label-wide" title="${c.name}">${c.name.split(' ')[0]}</span>
+        <div class="bar-track"><div class="bar-fill bar-fill-kids" style="width:${(c.count/maxC*100).toFixed(1)}%"><span class="bar-count">${c.count}x</span></div></div>
+      </div>`).join('')+'</div>'
+    : '<div class="empty-state"><div class="empty-state-icon">🏆</div><h3>Няма данни</h3></div>';
+
+  // Капаро по зона
+  const kz={};
+  active.forEach(r=>{ const z=r.zone||'indoor'; kz[z]=(kz[z]||0)+(parseFloat(r.kaparo)||0); });
+  const maxK=Math.max(...Object.values(kz),1);
+  document.getElementById('chartKaparo').innerHTML = Object.keys(kz).length
+    ? '<div class="bar-chart">'+Object.entries(kz).map(([z,sum])=>`<div class="bar-row">
+        <span class="bar-label-wide">${(zoneLabels[z]||z).replace(/[\u{1F300}-\u{1F9FF}]/gu,'').trim()}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${(sum/maxK*100).toFixed(1)}%"><span class="bar-count">${sum.toFixed(0)}лв</span></div></div>
+      </div>`).join('')+'</div>'
+    : '<div class="empty-state"><div class="empty-state-icon">💰</div><h3>Няма данни</h3></div>';
+}
+
+// ====== CSV EXPORT ======
+function exportCSV() {
+  const search=(document.getElementById('searchInput')?.value||'').toLowerCase();
+  const dateF=document.getElementById('filterDate')?.value||'';
+  const zoneF=document.getElementById('filterZone')?.value||'';
+  const filtered=reservations.filter(r=>{
+    if(search&&!r.name.toLowerCase().includes(search)&&!(r.phone||'').includes(search))return false;
+    if(dateF&&r.date!==dateF)return false;
+    if(zoneF&&r.zone!==zoneF)return false;
+    return true;
+  }).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+  const headers=['ID','Клиент','Телефон','Дата','Час','Зона','Маса','Гости','Продължителност','Капаро','Статус капаро','Статус','Въведено от','Бележки'];
+  const rows=filtered.map(r=>[
+    r.id,`"${r.name.replace(/"/g,'""')}"`,r.phone,r.date,r.time,r.zone,
+    `"${(r.table||'').replace(/"/g,'""')}"`,r.guests,r.duration||2,r.kaparo||0,
+    r.kaparoStatus||'none',r.status,`"${(r.createdBy||'').replace(/"/g,'""')}"`,
+    `"${(r.notes||'').replace(/"/g,'""').replace(/\n/g,' ')}"`
+  ]);
+  const csv='\uFEFF'+[headers,...rows].map(r=>r.join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`caramello-rezervacii-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast(`Изтеглени ${filtered.length} резервации ⬇️`,'success');
+}
+
+// ====== MESSAGING ======
+function formatPhoneBG(phone) {
+  const c=phone.replace(/\s/g,'');
+  if(c.startsWith('0')&&c.length===10) return '+359'+c.slice(1);
+  return c.startsWith('+')?c:c;
+}
+function buildConfirmMessage(r) {
+  return `Здравейте, ${r.name}!\nПотвърждаваме Вашата резервация в Caramello Kids:\n📅 Дата: ${formatDateBG(r.date)}\n🕐 Час: ${r.time}\n👥 Гости: ${r.guests}\n📍 Зона: ${(zoneLabels[r.zone]||r.zone).replace(/[\u{1F300}-\u{1F9FF}]/gu,'').trim()}${r.table?'\n🪑 Маса: '+r.table:''}${r.kaparo&&r.kaparo!='0'?'\n💰 Капаро: '+r.kaparo+' лв.':''}\n\nДо скоро! 🍽️`;
+}
+function sendWhatsApp(id) {
+  const r=reservations.find(x=>x.id==id);
+  if(!r)return;
+  window.open('https://wa.me/'+formatPhoneBG(r.phone)+'?text='+encodeURIComponent(buildConfirmMessage(r)),'_blank');
+}
+function sendViber(id) {
+  const r=reservations.find(x=>x.id==id);
+  if(!r)return;
+  const msg=buildConfirmMessage(r);
+  navigator.clipboard?.writeText(msg).catch(()=>{});
+  window.location.href='viber://chat?number='+encodeURIComponent(formatPhoneBG(r.phone));
+  showToast('Съобщението е копирано — постави го в Viber 📋','success');
 }
 
 // ====== KEYBOARD ======
