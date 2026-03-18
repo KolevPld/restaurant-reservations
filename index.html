@@ -278,9 +278,25 @@ textarea.form-control{resize:vertical;min-height:70px;}
 .audit-action{font-weight:500;color:var(--charcoal);font-size:0.84rem;}
 .audit-meta{font-size:0.72rem;color:var(--text-light);margin-top:2px;}
 
+/* FAB BUTTON */
+.fab-new{position:fixed;bottom:70px;right:16px;width:56px;height:56px;border-radius:50%;background:var(--success);color:#fff;border:none;font-size:1.7rem;font-weight:300;line-height:1;cursor:pointer;box-shadow:0 4px 18px rgba(39,174,96,0.45);z-index:140;align-items:center;justify-content:center;transition:transform 0.2s,box-shadow 0.2s;display:none;}
+.fab-new:hover{transform:scale(1.1);box-shadow:0 6px 24px rgba(39,174,96,0.55);}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--forest);align-items:stretch;z-index:140;box-shadow:0 -2px 14px rgba(0,0,0,0.18);display:none;}
+.bottom-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:rgba(255,255,255,0.45);font-size:0.6rem;font-weight:500;padding:5px 0;transition:color 0.18s;border-top:2px solid transparent;-webkit-tap-highlight-color:transparent;}
+.bottom-nav-item:active{background:rgba(255,255,255,0.06);}
+.bottom-nav-item.active{color:var(--gold);border-top-color:var(--gold);}
+.bottom-nav-item>.bn-icon{font-size:1.25rem;line-height:1;}
+
+/* TOPBAR MOBILE EXTRAS */
+.topbar-logo{display:none;font-family:'Playfair Display',serif;font-size:0.97rem;color:var(--forest);font-weight:700;position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;pointer-events:none;}
+.topbar-logo span{color:var(--gold);}
+.topbar-sync-mobile{display:none;align-items:center;gap:4px;font-size:0.7rem;color:var(--text-light);}
+
 /* PRINT */
 @media print {
-  .sidebar,.topbar,.topbar-actions,.btn,.modal-overlay,.toast-container,.hamburger,.sidebar-overlay{display:none!important;}
+  .sidebar,.topbar,.topbar-actions,.btn,.modal-overlay,.toast-container,.hamburger,.sidebar-overlay,.fab-new,.bottom-nav{display:none!important;}
   .main{margin-left:0!important;}
   .content{padding:10px!important;}
   body{background:#fff;}
@@ -288,13 +304,13 @@ textarea.form-control{resize:vertical;min-height:70px;}
   .no-print{display:none!important;}
 }
 
-/* RESPONSIVE */
+/* RESPONSIVE — TABLET (≤900px) */
 @media(max-width:900px){
   .hamburger{display:flex;}
   .sidebar{transform:translateX(-100%);z-index:200;width:280px;}
   .sidebar.open{transform:translateX(0);}
   .main{margin-left:0;}
-  .topbar{padding:0 14px;height:56px;}
+  .topbar{padding:0 14px;height:56px;position:relative;}
   .topbar-title{font-size:0.95rem;}
   .date-badge{display:none;}
   .content{padding:14px;}
@@ -308,20 +324,81 @@ textarea.form-control{resize:vertical;min-height:70px;}
   .form-grid-3{grid-template-columns:1fr 1fr;}
   .menu-grid{grid-template-columns:1fr 1fr;}
   #modalMenuGrid{grid-template-columns:1fr 1fr!important;}
-  table{min-width:520px;}
-  th,td{padding:9px 9px;font-size:0.79rem;}
+  table{min-width:480px;}
+  th,td{padding:8px 9px;font-size:0.79rem;}
   .nav-item{padding:13px 24px;}
-  .modal{width:100%!important;max-width:100vw;max-height:100dvh;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;margin:0;animation:slideUpMobile 0.25s ease;}
+  .modal{width:100%!important;max-width:100vw;max-height:92dvh;border-radius:16px 16px 0 0;position:fixed;bottom:0;left:0;right:0;margin:0;animation:slideUpMobile 0.25s ease;}
   @keyframes slideUpMobile{from{transform:translateY(100%);}to{transform:translateY(0);}}
   .modal-overlay{align-items:flex-end;}
   .filter-bar{gap:7px;}
   .search-input{width:100%;}
   .filter-select{flex:1;}
 }
+
+/* RESPONSIVE — MOBILE (≤768px) */
+@media(max-width:768px){
+  /* Topbar: fixed, hamburger | logo center | sync right */
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:150;height:56px;}
+  .topbar-title{display:none;}
+  .topbar-logo{display:block;}
+  .topbar-actions .btn,.topbar-actions .date-badge{display:none!important;}
+  .topbar-sync-mobile{display:flex;}
+
+  /* Content: account for fixed topbar (56px) + bottom nav (60px) */
+  .content{padding:68px 12px 76px;}
+
+  /* Stats: 2×2 grid */
+  .stats-grid{grid-template-columns:1fr 1fr;gap:10px;}
+
+  /* Dashboard/Analytics inline grids → single column */
+  #view-dashboard>[style*="grid"],
+  #view-analytics>[style*="grid"]{display:block!important;}
+  #view-dashboard>[style*="grid"]>.card,
+  #view-analytics>[style*="grid"]>.card{margin-bottom:14px;}
+
+  /* Tables: hide kaparo + notes columns */
+  table{min-width:0;width:100%;}
+  #resTable-all table th:nth-child(6),#resTable-all table td:nth-child(6),
+  #resTable-all table th:nth-child(7),#resTable-all table td:nth-child(7),
+  #resTable-confirmed table th:nth-child(6),#resTable-confirmed table td:nth-child(6),
+  #resTable-confirmed table th:nth-child(7),#resTable-confirmed table td:nth-child(7),
+  #resTable-pending table th:nth-child(6),#resTable-pending table td:nth-child(6),
+  #resTable-pending table th:nth-child(7),#resTable-pending table td:nth-child(7),
+  #resTable-cancelled table th:nth-child(6),#resTable-cancelled table td:nth-child(6),
+  #resTable-cancelled table th:nth-child(7),#resTable-cancelled table td:nth-child(7){display:none;}
+
+  /* Floor plan: horizontal scroll */
+  #fp-indoor>.fp-wrap,#fp-garden>.fp-wrap{overflow-x:auto;overflow-y:hidden;min-width:0;}
+
+  /* Form grids: always 1 column */
+  .form-grid-2,.form-grid-3{grid-template-columns:1fr!important;}
+
+  /* Touch-friendly buttons */
+  .btn{min-height:44px;}
+  .btn-sm{min-height:40px;padding:9px 13px;}
+  .btn-xs{min-height:34px;padding:7px 10px;}
+
+  /* Toast above bottom nav */
+  .toast-container{bottom:68px;right:12px;}
+
+  /* Show FAB and bottom nav */
+  .fab-new{display:flex;}
+  .bottom-nav{display:flex;}
+
+  /* Hide desktop "+ Резервация" button (FAB replaces it) */
+  .topbar-actions{gap:6px;}
+
+  /* Filter bar full-width */
+  .filter-bar{flex-wrap:wrap;}
+  .search-input{width:100%;flex:1 1 100%;}
+}
+
+/* RESPONSIVE — SMALL PHONES (≤480px) */
 @media(max-width:480px){
   .stats-grid{grid-template-columns:1fr 1fr;}
-  .form-grid-3{grid-template-columns:1fr;}
   .menu-grid{grid-template-columns:1fr;}
+  #modalMenuGrid{grid-template-columns:1fr!important;}
+  .modal{max-height:96dvh;}
 }
 </style>
 </head>
@@ -401,11 +478,13 @@ textarea.form-control{resize:vertical;min-height:70px;}
     <div class="topbar-left">
       <button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
       <div class="topbar-title" id="topbarTitle">Табло</div>
+      <div class="topbar-logo">Caramello <span>Kids</span></div>
     </div>
     <div class="topbar-actions">
       <div class="date-badge" id="dateBadge"></div>
       <button class="btn btn-outline btn-sm no-print" onclick="printDay()">🖨️ Печат</button>
       <button class="btn btn-gold btn-sm no-print" onclick="openNewReservation()">＋ Резервация</button>
+      <div class="topbar-sync-mobile"><span class="sync-dot" id="syncDotMobile"></span><span id="syncStatusMobile"></span></div>
     </div>
   </div>
 
@@ -859,6 +938,28 @@ textarea.form-control{resize:vertical;min-height:70px;}
   </div>
 </div>
 
+<!-- FAB -->
+<button class="fab-new no-print" onclick="openNewReservation()">＋</button>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav no-print">
+  <button class="bottom-nav-item active" id="bnav-dashboard" onclick="showView('dashboard')">
+    <span class="bn-icon">📊</span><span class="bn-label">Табло</span>
+  </button>
+  <button class="bottom-nav-item" id="bnav-reservations" onclick="showView('reservations')">
+    <span class="bn-icon">📅</span><span class="bn-label">Резервации</span>
+  </button>
+  <button class="bottom-nav-item" id="bnav-floorplan" onclick="showView('floorplan')">
+    <span class="bn-icon">🗺️</span><span class="bn-label">План</span>
+  </button>
+  <button class="bottom-nav-item" id="bnav-kids" onclick="showView('kids')">
+    <span class="bn-icon">🎠</span><span class="bn-label">Детски</span>
+  </button>
+  <button class="bottom-nav-item" id="bnav-paintball" onclick="showView('paintball')">
+    <span class="bn-icon">🎯</span><span class="bn-label">Пейнтбол</span>
+  </button>
+</nav>
+
 <!-- PRINT AREA -->
 <div id="printArea" style="display:none"></div>
 
@@ -1033,6 +1134,10 @@ function setSyncStatus(type, msg) {
   const txt = document.getElementById('syncStatus');
   dot.className = 'sync-dot ' + type;
   txt.textContent = msg;
+  const dotM = document.getElementById('syncDotMobile');
+  const txtM = document.getElementById('syncStatusMobile');
+  if (dotM) dotM.className = 'sync-dot ' + type;
+  if (txtM) txtM.textContent = msg;
 }
 
 // ====== PUSH NOTIFICATIONS ======
@@ -1367,6 +1472,9 @@ function showView(id) {
   const titles = {dashboard:'Табло',reservations:'Резервации',floorplan:'План на залата',kids:'Детски Център',paintball:'Пейнтбол',menu:'Меню',users:'Потребители',analytics:'Статистика',audit:'Audit Log',kaparo:'Капаро'};
   document.getElementById('topbarTitle').textContent = titles[id]||'';
   document.querySelectorAll('.nav-item').forEach(n=>{if(n.getAttribute('onclick')===`showView('${id}')`)n.classList.add('active');});
+  document.querySelectorAll('.bottom-nav-item').forEach(n=>n.classList.remove('active'));
+  const bnavEl = document.getElementById('bnav-'+id);
+  if (bnavEl) bnavEl.classList.add('active');
   closeSidebar();
 }
 
