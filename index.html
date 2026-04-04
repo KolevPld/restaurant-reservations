@@ -401,6 +401,32 @@ textarea.form-control{resize:vertical;min-height:70px;}
   .modal{max-height:96dvh;}
 }
 </style>
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+  import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBUWXTDFJ73W_9wZcYc9B3hxMMBi2iFwD8",
+    authDomain: "caramello-kids.firebaseapp.com",
+    projectId: "caramello-kids",
+    storageBucket: "caramello-kids.firebasestorage.app",
+    messagingSenderId: "13359015050",
+    appId: "1:13359015050:web:34b6058e4002a557d1f973"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+  window._col = (name) => collection(db, name);
+  window._getDocs = getDocs;
+  window._addDoc = addDoc;
+  window._updateDoc = updateDoc;
+  window._doc = (name, id) => doc(db, name, id);
+  window._query = query;
+  window._orderBy = orderBy;
+  window._fbReady = true;
+  window.dispatchEvent(new Event('fb-ready'));
+</script>
 </head>
 <body>
 
@@ -965,25 +991,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
 
 <script>
 // ====== CONFIG ======
-const SUPABASE_URL = 'https://mfybnoicfkokalwzmebb.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1meWJub2ljZmtva2Fsd3ptZWJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMzkzMjgsImV4cCI6MjA4ODcxNTMyOH0.M3PsS5qYhGqyX11vTi5SU4oL-n6p8Opjv4SzFu9szUA';
-
-async function sbFetch(path, method='GET', body=null, extra={}) {
-  const opts = {
-    method,
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Content-Type': 'application/json',
-      ...extra
-    }
-  };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, opts);
-  if (!res.ok) throw new Error(await res.text());
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
-}
+// Firebase Firestore (вж. module скрипт в <head>)
 
 // ====== TABLES ======
 const TABLES = {
@@ -1055,7 +1063,7 @@ const statusLabels = {confirmed:'Потвърден',pending:'Чакащ',cancel
 const statusClasses = {confirmed:'badge-confirmed',pending:'badge-pending',cancelled:'badge-cancelled'};
 const zoneLabels = {indoor:'🍽️ Вътрешна',garden:'🌿 Градина',kids:'🎠 Детски',paintball:'🎯 Пейнтбол'};
 
-// ====== SUPABASE SYNC ======
+// ====== FIREBASE SYNC ======
 function rowToRes(row) {
   return {
     id: String(row.id),
@@ -1089,16 +1097,9 @@ function resToRow(res) {
 
 async function loadFromSheets() {
   setSyncStatus('loading','Зарежда...');
-  console.log('Loading from Supabase...');
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/reservations?order=created_at.desc&limit=500', {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-    });
-    console.log('Response status:', res.status);
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-    console.log('Data:', data);
-    const newList = (data || []).map(rowToRes);
+    const snap = await window._getDocs(window._query(window._col('reservations'), window._orderBy('created_at', 'desc')));
+    const newList = snap.docs.map(d => rowToRes({ ...d.data(), id: d.id }));
     if (lastSnapshotIds !== null) {
       const added = newList.filter(r => !lastSnapshotIds.has(r.id));
       if (added.length > 0) sendPushNotification(added);
@@ -1108,31 +1109,36 @@ async function loadFromSheets() {
     setSyncStatus('ok','✓ Синхронизирано');
     renderAll();
   } catch(e) {
-    console.error('Supabase error:', e);
     setSyncStatus('err','Офлайн режим');
-    showToast('Работи в офлайн режим', 'error');
+    showToast('Грешка: ' + e.message, 'error');
   }
 }
 
 async function saveToSheets(res) {
   try {
+    const data = {
+      name: res.name, phone: res.phone, date: res.date, time: res.time,
+      guests: String(res.guests), zone: res.zone, table_num: res.table,
+      status: res.status, kaparo: String(res.kaparo), notes: res.notes,
+      created_by: res.createdBy, duration: String(res.duration),
+      created_at: new Date().toISOString()
+    };
     if (editingId) {
-      await sbFetch('reservations?id=eq.' + res.id, 'PATCH', resToRow(res), {'Prefer':'return=minimal'});
+      await window._updateDoc(window._doc('reservations', res.id), data);
     } else {
-      const row = resToRow(res);
-      const saved = await sbFetch('reservations', 'POST', row, {'Prefer':'return=representation'});
-      if (saved && saved[0]) res.id = String(saved[0].id);
+      const ref = await window._addDoc(window._col('reservations'), data);
+      res.id = ref.id;
     }
-    setSyncStatus('ok','✓ Запазено в облака');
+    setSyncStatus('ok','✓ Запазено');
   } catch(e) {
-    setSyncStatus('err','Не е запазено в облака');
-    showToast('Грешка при запис: ' + e.message, 'error');
+    setSyncStatus('err','Не е запазено');
+    showToast('Грешка: ' + e.message, 'error');
   }
 }
 
 async function updateStatusInSheets(id, status) {
   try {
-    await sbFetch('reservations?id=eq.' + id, 'PATCH', {status}, {'Prefer':'return=minimal'});
+    await window._updateDoc(window._doc('reservations', id), { status });
     setSyncStatus('ok','✓ Запазено');
   } catch(e) { setSyncStatus('err','Не е запазено'); }
 }
@@ -1196,7 +1202,11 @@ function init() {
   document.getElementById('floorDate').value = today;
   document.getElementById('floorTime').value = new Date().toTimeString().slice(0,5);
   requestNotificationPermission();
-  loadFromSheets();
+  if (window._fbReady) {
+    loadFromSheets();
+  } else {
+    window.addEventListener('fb-ready', loadFromSheets, { once: true });
+  }
   setInterval(loadFromSheets, 60000);
 }
 
