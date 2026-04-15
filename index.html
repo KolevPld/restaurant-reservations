@@ -458,6 +458,21 @@ textarea.form-control{resize:vertical;min-height:70px;}
   /* Reservation клиент cell: compact */
   .content{padding:64px 8px 72px;}
 }
+
+/* FINANCE */
+.fin-period{background:transparent;border:1.5px solid var(--border);color:var(--text-mid);font-family:'DM Sans',sans-serif;font-size:0.82rem;padding:7px 16px;border-radius:8px;cursor:pointer;transition:all 0.18s;}
+.fin-period:hover{border-color:var(--forest-light);color:var(--forest);}
+.fin-period.active{background:var(--forest);color:#fff;border-color:var(--forest);}
+.fin-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.fin-kpi-card{background:var(--warm-white);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);}
+.fin-kpi-icon{font-size:1.5rem;margin-bottom:6px;}
+.fin-kpi-label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);font-weight:600;margin-bottom:6px;}
+.fin-kpi-value{font-family:'Playfair Display',serif;font-size:1.9rem;color:var(--forest);line-height:1;}
+.fin-kpi-sub{font-size:0.73rem;color:var(--text-light);margin-top:4px;}
+.fin-kpi-card.fin-total{border-color:rgba(44,74,62,0.3);background:rgba(44,74,62,0.04);}
+.fin-kpi-card.fin-total .fin-kpi-value{color:var(--forest);}
+@media(max-width:900px){.fin-kpi{grid-template-columns:1fr 1fr;gap:10px;}}
+@media(max-width:480px){.fin-kpi{grid-template-columns:1fr 1fr;gap:8px;}.fin-kpi-card{padding:12px 10px;}.fin-kpi-value{font-size:1.4rem;}}
 </style>
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
@@ -545,6 +560,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
     <div class="nav-item" id="navAudit" onclick="showView('audit')"><span class="nav-icon">🕵️</span>Audit Log</div>
     <div class="nav-section-label" id="navSectionFinance" style="margin-top:6px">Финанси</div>
     <div class="nav-item" id="navKaparo" onclick="showView('kaparo')"><span class="nav-icon">💰</span>Капаро</div>
+    <div class="nav-item" id="navFinance" onclick="showView('finance')"><span class="nav-icon">📊</span>Финансово Табло</div>
   </nav>
   <div class="sidebar-footer">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:0.75rem;color:rgba(255,255,255,0.5)">
@@ -812,6 +828,36 @@ textarea.form-control{resize:vertical;min-height:70px;}
           <div class="card-header"><div class="card-title">💰 Капаро по зона</div></div>
           <div id="chartKaparo"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- FINANCE DASHBOARD -->
+    <div class="view" id="view-finance">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="fin-period active" onclick="setFinPeriod(this,'month')">Този месец</button>
+          <button class="fin-period" onclick="setFinPeriod(this,'week')">7 дни</button>
+          <button class="fin-period" onclick="setFinPeriod(this,'today')">Днес</button>
+          <button class="fin-period" onclick="setFinPeriod(this,'all')">Всичко</button>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="printFinance()">🖨️ Печат</button>
+      </div>
+      <div class="fin-kpi" id="finKpi"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+        <div class="card">
+          <div class="card-header"><div class="card-title">🗺️ Приходи по зона</div></div>
+          <div id="finChartZone"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">📅 Приходи по дата</div></div>
+          <div id="finChartDays"></div>
+        </div>
+      </div>
+      <div class="card" style="padding:0">
+        <div class="card-header" style="padding:16px 20px 0">
+          <div class="card-title">💳 Финансови детайли по резервации</div>
+        </div>
+        <div class="table-wrap" id="finTable"></div>
       </div>
     </div>
 
@@ -1239,6 +1285,8 @@ function applyRolePermissions(role) {
   });
   const usersNav = document.getElementById('usersNav');
   if (usersNav) usersNav.style.display = role === 'manager' ? '' : 'none';
+  const navFinance = document.getElementById('navFinance');
+  if (navFinance) navFinance.style.display = role === 'manager' ? '' : 'none';
   // Bottom nav
   const bnavDash = document.getElementById('bnav-dashboard');
   if (bnavDash) bnavDash.style.display = restricted ? 'none' : '';
@@ -1298,6 +1346,7 @@ function renderAll() {
   renderAnalytics();
   renderAuditLog();
   renderKaparo();
+  renderFinance();
   updatePendingBadge();
 }
 
@@ -1561,11 +1610,11 @@ function renderUsers() {
 // ====== NAVIGATION ======
 function showView(id) {
   const restricted = currentUser?.role === 'waiter' || currentUser?.role === 'animator';
-  if (restricted && ['dashboard','analytics','audit','kaparo'].includes(id)) return;
+  if (restricted && ['dashboard','analytics','audit','kaparo','finance'].includes(id)) return;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('view-'+id).classList.add('active');
-  const titles = {dashboard:'Табло',reservations:'Резервации',floorplan:'План на залата',kids:'Детски Център',paintball:'Пейнтбол',menu:'Меню',users:'Потребители',analytics:'Статистика',audit:'Audit Log',kaparo:'Капаро'};
+  const titles = {dashboard:'Табло',reservations:'Резервации',floorplan:'План на залата',kids:'Детски Център',paintball:'Пейнтбол',menu:'Меню',users:'Потребители',analytics:'Статистика',audit:'Audit Log',kaparo:'Капаро',finance:'Финансово Табло'};
   document.getElementById('topbarTitle').textContent = titles[id]||'';
   document.querySelectorAll('.nav-item').forEach(n=>{if(n.getAttribute('onclick')===`showView('${id}')`)n.classList.add('active');});
   document.querySelectorAll('.bottom-nav-item').forEach(n=>n.classList.remove('active'));
@@ -2181,6 +2230,152 @@ function renderAnalytics() {
         <div class="bar-track"><div class="bar-fill" style="width:${(sum/maxK*100).toFixed(1)}%"><span class="bar-count">${sum.toFixed(0)}лв</span></div></div>
       </div>`).join('')+'</div>'
     : '<div class="empty-state"><div class="empty-state-icon">💰</div><h3>Няма данни</h3></div>';
+}
+
+// ====== FINANCE DASHBOARD ======
+let finPeriod = 'month';
+
+function setFinPeriod(btn, period) {
+  finPeriod = period;
+  document.querySelectorAll('.fin-period').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFinance();
+}
+
+function finFilteredList() {
+  const today = new Date().toLocaleDateString('sv').slice(0,10);
+  const now = new Date();
+  return reservations.filter(r => {
+    if (r.status === 'cancelled') return false;
+    if (finPeriod === 'today') return r.date === today;
+    if (finPeriod === 'week') {
+      const diff = (now - new Date(r.date)) / 86400000;
+      return diff >= 0 && diff < 7;
+    }
+    if (finPeriod === 'month') return r.date.slice(0,7) === today.slice(0,7);
+    return true;
+  });
+}
+
+function menuRevenue(r) {
+  return (r.menu||[]).reduce((s,id) => {
+    const item = menuItems.find(m => m.id == id);
+    return s + (item?.price || 0);
+  }, 0);
+}
+
+function renderFinance() {
+  const list = finFilteredList();
+  const kaparoPaid   = list.filter(r=>r.kaparoStatus==='paid').reduce((s,r)=>s+(parseFloat(r.kaparo)||0),0);
+  const kaparoTotal  = list.reduce((s,r)=>s+(parseFloat(r.kaparo)||0),0);
+  const menuRev      = list.reduce((s,r)=>s+menuRevenue(r),0);
+  const totalRev     = kaparoPaid + menuRev;
+  const kaparoPending = kaparoTotal - kaparoPaid;
+
+  // KPI
+  document.getElementById('finKpi').innerHTML = `
+    <div class="fin-kpi-card fin-total">
+      <div class="fin-kpi-icon">💰</div>
+      <div class="fin-kpi-label">Общо приходи</div>
+      <div class="fin-kpi-value">${totalRev.toFixed(0)}</div>
+      <div class="fin-kpi-sub">лв. реализирани</div>
+    </div>
+    <div class="fin-kpi-card">
+      <div class="fin-kpi-icon">✅</div>
+      <div class="fin-kpi-label">Капаро платено</div>
+      <div class="fin-kpi-value" style="color:var(--success)">${kaparoPaid.toFixed(0)}</div>
+      <div class="fin-kpi-sub">лв. от ${list.filter(r=>r.kaparoStatus==='paid').length} резервации</div>
+    </div>
+    <div class="fin-kpi-card">
+      <div class="fin-kpi-icon">🍽️</div>
+      <div class="fin-kpi-label">Поръчки от меню</div>
+      <div class="fin-kpi-value" style="color:var(--forest-mid)">${menuRev.toFixed(0)}</div>
+      <div class="fin-kpi-sub">лв. от ${list.filter(r=>(r.menu||[]).length>0).length} резервации</div>
+    </div>
+    <div class="fin-kpi-card">
+      <div class="fin-kpi-icon">⏳</div>
+      <div class="fin-kpi-label">Очаквано капаро</div>
+      <div class="fin-kpi-value" style="color:var(--gold-dark)">${kaparoPending.toFixed(0)}</div>
+      <div class="fin-kpi-sub">лв. неплатено</div>
+    </div>`;
+
+  // Chart by zone
+  const zoneRev = {};
+  list.forEach(r => {
+    const z = r.zone || 'indoor';
+    zoneRev[z] = (zoneRev[z]||0) + (r.kaparoStatus==='paid' ? parseFloat(r.kaparo)||0 : 0) + menuRevenue(r);
+  });
+  const maxZ = Math.max(...Object.values(zoneRev), 1);
+  document.getElementById('finChartZone').innerHTML = Object.keys(zoneRev).length
+    ? '<div class="bar-chart">'+Object.entries(zoneRev).sort((a,b)=>b[1]-a[1]).map(([z,sum])=>`
+        <div class="bar-row">
+          <span class="bar-label-wide">${(zoneLabels[z]||z).replace(/[\u{1F300}-\u{1F9FF}]/gu,'').trim()}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${(sum/maxZ*100).toFixed(1)}%"><span class="bar-count">${sum.toFixed(0)} лв.</span></div></div>
+        </div>`).join('')+'</div>'
+    : '<div class="empty-state"><div class="empty-state-icon">🗺️</div><h3>Няма данни</h3></div>';
+
+  // Chart by date
+  const dayRev = {};
+  list.forEach(r => {
+    if (!r.date) return;
+    dayRev[r.date] = (dayRev[r.date]||0) + (r.kaparoStatus==='paid' ? parseFloat(r.kaparo)||0 : 0) + menuRevenue(r);
+  });
+  const sortedDays = Object.keys(dayRev).sort();
+  const maxDay = Math.max(...Object.values(dayRev), 1);
+  document.getElementById('finChartDays').innerHTML = sortedDays.length
+    ? '<div class="bar-chart">'+sortedDays.map(d=>`
+        <div class="bar-row">
+          <span class="bar-label">${d.slice(5)}</span>
+          <div class="bar-track"><div class="bar-fill bar-fill-gold" style="width:${(dayRev[d]/maxDay*100).toFixed(1)}%"><span class="bar-count">${dayRev[d].toFixed(0)}</span></div></div>
+        </div>`).join('')+'</div>'
+    : '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Няма данни</h3></div>';
+
+  // Table
+  const sorted = [...list].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
+  document.getElementById('finTable').innerHTML = sorted.length
+    ? `<table><thead><tr>
+        <th>Клиент</th><th>Дата/Час</th><th>Зона</th><th>Капаро</th><th>Статус</th><th>Поръчки</th><th>Общо</th>
+      </tr></thead><tbody>
+      ${sorted.map(r => {
+        const menu = menuRevenue(r);
+        const kap  = parseFloat(r.kaparo)||0;
+        const paid = r.kaparoStatus==='paid' ? kap : 0;
+        const tot  = paid + menu;
+        return `<tr>
+          <td><div style="font-weight:500">${r.name}</div><div style="font-size:0.73rem;color:var(--text-light)">${r.phone}</div></td>
+          <td><div>${formatDateBG(r.date)}</div><strong style="color:var(--forest)">${r.time}</strong></td>
+          <td>${zoneLabels[r.zone]||r.zone}</td>
+          <td>${kap>0?`<strong style="color:var(--gold-dark)">${kap.toFixed(0)} лв.</strong>`:'—'}</td>
+          <td><span class="badge ${r.kaparoStatus==='paid'?'badge-confirmed':r.kaparoStatus==='pending'?'badge-pending':'badge-cancelled'}">${r.kaparoStatus==='paid'?'✅ Платено':r.kaparoStatus==='pending'?'⏳ Очаква':'—'}</span></td>
+          <td>${menu>0?`<span style="color:var(--forest-mid);font-weight:500">${menu.toFixed(2)} лв.</span>`:'—'}</td>
+          <td><strong>${tot>0?tot.toFixed(2)+' лв.':'—'}</strong></td>
+        </tr>`;
+      }).join('')}
+      <tr style="background:rgba(44,74,62,0.05);font-weight:600">
+        <td colspan="3" style="text-align:right;font-size:0.8rem;color:var(--text-mid)">ОБЩО:</td>
+        <td style="color:var(--gold-dark)">${kaparoPaid.toFixed(0)} лв.</td>
+        <td></td>
+        <td style="color:var(--forest-mid)">${menuRev.toFixed(2)} лв.</td>
+        <td style="color:var(--forest)">${totalRev.toFixed(2)} лв.</td>
+      </tr>
+    </tbody></table>`
+    : '<div class="empty-state"><div class="empty-state-icon">💳</div><h3>Няма финансови данни за периода</h3></div>';
+}
+
+function printFinance() {
+  const list = finFilteredList();
+  const kaparoPaid = list.filter(r=>r.kaparoStatus==='paid').reduce((s,r)=>s+(parseFloat(r.kaparo)||0),0);
+  const menuRev    = list.reduce((s,r)=>s+menuRevenue(r),0);
+  const periodLabels = {today:'Днес',week:'Последни 7 дни',month:'Този месец',all:'Всичко'};
+  const rows = list.sort((a,b)=>b.date.localeCompare(a.date)).map(r=>{
+    const menu=menuRevenue(r), kap=parseFloat(r.kaparo)||0, paid=r.kaparoStatus==='paid'?kap:0;
+    return `<tr><td>${r.name}</td><td>${formatDateBG(r.date)} ${r.time}</td><td>${(zoneLabels[r.zone]||r.zone).replace(/[\u{1F300}-\u{1F9FF}]/gu,'').trim()}</td><td>${kap>0?kap.toFixed(0)+' лв.':'—'}</td><td>${r.kaparoStatus==='paid'?'Платено':r.kaparoStatus==='pending'?'Очаква':'—'}</td><td>${menu>0?menu.toFixed(2)+' лв.':'—'}</td><td>${(paid+menu)>0?(paid+menu).toFixed(2)+' лв.':'—'}</td></tr>`;
+  }).join('');
+  openPrintWin('Финансово Табло',
+    `<h1>💰 Caramello Kids — Финансово Табло</h1>
+     <p>Период: <strong>${periodLabels[finPeriod]}</strong> &nbsp;·&nbsp; Отпечатано: ${new Date().toLocaleString('bg-BG')}</p>
+     <p>Капаро платено: <strong>${kaparoPaid.toFixed(0)} лв.</strong> &nbsp;|&nbsp; Поръчки меню: <strong>${menuRev.toFixed(2)} лв.</strong> &nbsp;|&nbsp; <strong>Общо: ${(kaparoPaid+menuRev).toFixed(2)} лв.</strong></p>
+     <table><thead><tr><th>Клиент</th><th>Дата/Час</th><th>Зона</th><th>Капаро</th><th>Статус</th><th>Поръчки</th><th>Общо</th></tr></thead><tbody>${rows}</tbody></table>`);
 }
 
 // ====== CSV EXPORT ======
