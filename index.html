@@ -483,7 +483,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section-label">Главно</div>
-    <div class="nav-item active" onclick="showView('dashboard')"><span class="nav-icon">📊</span>Табло</div>
+    <div class="nav-item active" id="navDashboard" onclick="showView('dashboard')"><span class="nav-icon">📊</span>Табло</div>
     <div class="nav-item" onclick="showView('reservations')"><span class="nav-icon">📅</span>Резервации<span class="nav-badge" id="pendingBadge" style="display:none">0</span></div>
     <div class="nav-item" onclick="showView('floorplan')"><span class="nav-icon">🗺️</span>План на залата</div>
     <div class="nav-section-label" style="margin-top:6px">Зони</div>
@@ -492,11 +492,11 @@ textarea.form-control{resize:vertical;min-height:70px;}
     <div class="nav-section-label" style="margin-top:6px">Управление</div>
     <div class="nav-item" onclick="showView('menu')"><span class="nav-icon">📋</span>Меню</div>
     <div class="nav-item" onclick="showView('users')" id="usersNav"><span class="nav-icon">👥</span>Потребители</div>
-    <div class="nav-section-label" style="margin-top:6px">Анализ</div>
-    <div class="nav-item" onclick="showView('analytics')"><span class="nav-icon">📈</span>Статистика</div>
-    <div class="nav-item" onclick="showView('audit')"><span class="nav-icon">🕵️</span>Audit Log</div>
-    <div class="nav-section-label" style="margin-top:6px">Финанси</div>
-    <div class="nav-item" onclick="showView('kaparo')"><span class="nav-icon">💰</span>Капаро</div>
+    <div class="nav-section-label" id="navSectionAnalytics" style="margin-top:6px">Анализ</div>
+    <div class="nav-item" id="navAnalytics" onclick="showView('analytics')"><span class="nav-icon">📈</span>Статистика</div>
+    <div class="nav-item" id="navAudit" onclick="showView('audit')"><span class="nav-icon">🕵️</span>Audit Log</div>
+    <div class="nav-section-label" id="navSectionFinance" style="margin-top:6px">Финанси</div>
+    <div class="nav-item" id="navKaparo" onclick="showView('kaparo')"><span class="nav-icon">💰</span>Капаро</div>
   </nav>
   <div class="sidebar-footer">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:0.75rem;color:rgba(255,255,255,0.5)">
@@ -963,7 +963,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
       <div class="form-group"><label class="form-label">Роля</label>
         <select class="form-control" id="u-role">
           <option value="manager">Мениджър</option><option value="waiter">Сервитьор</option>
-          <option value="reception">Рецепция</option><option value="animator">Аниматор</option>
+          <option value="animator">Аниматор</option>
         </select>
       </div>
       <div class="form-group"><label class="form-label">Парола</label><input type="password" class="form-control" id="u-pass" placeholder="••••••"/></div>
@@ -1029,6 +1029,7 @@ const TABLES = {
 // ====== STATE ======
 let currentUser = null;
 let editingId = null;
+function canEdit() { return currentUser?.role === 'manager'; }
 let reservations = [];
 let lastSnapshotIds = null;
 let selectedMenuItems = [];
@@ -1048,7 +1049,6 @@ let menuItems = [
 let users = [
   {id:1,name:'Мениджър',role:'manager',pass:'1234'},
   {id:2,name:'Сервитьор',role:'waiter',pass:'1111'},
-  {id:3,name:'Рецепция',role:'reception',pass:'2222'},
   {id:4,name:'Аниматор',role:'animator',pass:'3333'},
 ];
 
@@ -1069,7 +1069,7 @@ function setKaparoStatus(id, status) {
 loadMenuFromStorage();
 loadUsersFromStorage();
 
-const roleLabels = {manager:'Администратор',waiter:'Сервитьор',reception:'Рецепция',animator:'Аниматор'};
+const roleLabels = {manager:'Администратор',waiter:'Сервитьор',animator:'Аниматор'};
 const statusLabels = {confirmed:'Потвърден',pending:'Чакащ',cancelled:'Отказан'};
 const statusClasses = {confirmed:'badge-confirmed',pending:'badge-pending',cancelled:'badge-cancelled'};
 const zoneLabels = {indoor:'🍽️ Вътрешна',garden:'🌿 Градина',kids:'🎠 Детски',paintball:'🎯 Пейнтбол'};
@@ -1181,6 +1181,16 @@ function sendPushNotification(added) {
   new Notification(title, {body, icon:'icon.png'});
 }
 
+// ====== ROLE PERMISSIONS ======
+function applyRolePermissions(role) {
+  const restricted = role === 'waiter' || role === 'animator';
+  const ids = ['navDashboard','navAnalytics','navAudit','navKaparo','navSectionAnalytics','navSectionFinance','usersNav'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = (restricted && id !== 'usersNav') || (id === 'usersNav' && role !== 'manager') ? 'none' : '';
+  });
+}
+
 // ====== LOGIN ======
 function quickLogin(name) {
   document.getElementById('loginUser').value = name;
@@ -1197,9 +1207,10 @@ function doLogin() {
   document.getElementById('sidebarName').textContent = u.name;
   document.getElementById('sidebarRole').textContent = roleLabels[u.role] || 'Служител';
   document.getElementById('sidebarInitial').textContent = u.name.charAt(0).toUpperCase();
-  if (u.role !== 'manager') document.getElementById('usersNav').style.display = 'none';
+  applyRolePermissions(u.role);
   showToast('Добре дошъл, ' + u.name + '! 👋','success');
   init();
+  if (u.role === 'waiter' || u.role === 'animator') showView('reservations');
 }
 function doLogout() {
   currentUser = null;
@@ -1373,9 +1384,9 @@ function resRow(r) {
     <td><span class="badge ${statusClasses[r.status]}">${statusLabels[r.status]}</span></td>
     <td>
       <div style="display:flex;gap:5px;flex-wrap:wrap">
-        ${r.status==='pending'?`<button class="btn btn-xs btn-gold" onclick="changeStatus('${r.id}','confirmed')">✅</button>`:''}
-        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-outline" onclick="editReservation('${r.id}')">✏️</button>`:''}
-        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-danger" onclick="changeStatus('${r.id}','cancelled')">✗</button>`:''}
+        ${canEdit()&&r.status==='pending'?`<button class="btn btn-xs btn-gold" onclick="changeStatus('${r.id}','confirmed')">✅</button>`:''}
+        ${canEdit()&&r.status!=='cancelled'?`<button class="btn btn-xs btn-outline" onclick="editReservation('${r.id}')">✏️</button>`:''}
+        ${canEdit()&&r.status!=='cancelled'?`<button class="btn btn-xs btn-danger" onclick="changeStatus('${r.id}','cancelled')">✗</button>`:''}
         <button class="btn btn-xs btn-whatsapp" onclick="sendWhatsApp('${r.id}')" title="WhatsApp">💬</button>
         <button class="btn btn-xs btn-viber" onclick="sendViber('${r.id}')" title="Viber">📱</button>
       </div>
@@ -1438,8 +1449,8 @@ function renderKids() {
       <td>${r.kaparo&&r.kaparo!='0'?`<span style="font-weight:600;color:var(--gold-dark)">${r.kaparo} лв.</span>`:'—'}</td>
       <td><span class="badge ${statusClasses[r.status]}">${statusLabels[r.status]}</span></td>
       <td><div style="display:flex;gap:5px">
-        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-outline" onclick="editReservation('${r.id}')">✏️</button>`:''}
-        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-danger" onclick="changeStatus('${r.id}','cancelled')">✗</button>`:''}
+        ${canEdit()&&r.status!=='cancelled'?`<button class="btn btn-xs btn-outline" onclick="editReservation('${r.id}')">✏️</button>`:''}
+        ${canEdit()&&r.status!=='cancelled'?`<button class="btn btn-xs btn-danger" onclick="changeStatus('${r.id}','cancelled')">✗</button>`:''}
       </div></td>
     </tr>`).join('')}
     </tbody></table>`
@@ -1459,8 +1470,8 @@ function renderPaintball() {
       <td>${r.kaparo&&r.kaparo!='0'?`<span style="font-weight:600;color:var(--gold-dark)">${r.kaparo} лв.</span>`:'—'}</td>
       <td><span class="badge ${statusClasses[r.status]}">${statusLabels[r.status]}</span></td>
       <td><div style="display:flex;gap:5px">
-        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-outline" onclick="editReservation('${r.id}')">✏️</button>`:''}
-        ${r.status!=='cancelled'?`<button class="btn btn-xs btn-danger" onclick="changeStatus('${r.id}','cancelled')">✗</button>`:''}
+        ${canEdit()&&r.status!=='cancelled'?`<button class="btn btn-xs btn-outline" onclick="editReservation('${r.id}')">✏️</button>`:''}
+        ${canEdit()&&r.status!=='cancelled'?`<button class="btn btn-xs btn-danger" onclick="changeStatus('${r.id}','cancelled')">✗</button>`:''}
       </div></td>
     </tr>`).join('')}
     </tbody></table>`
