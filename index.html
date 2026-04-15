@@ -302,6 +302,8 @@ textarea.form-control{resize:vertical;min-height:70px;}
   body{background:#fff;}
   .card{box-shadow:none;border:1px solid #ddd;}
   .no-print{display:none!important;}
+  .table-wrap{overflow:visible!important;}
+  table{min-width:0!important;width:100%!important;}
 }
 
 /* RESPONSIVE — TABLET (≤900px) */
@@ -1907,7 +1909,7 @@ function printDay() {
     ${todayRes.map(r=>`<tr><td><strong>${r.time}</strong></td><td>${r.name}</td><td>${r.phone}</td><td>${r.guests}</td><td>${zoneLabels[r.zone]||r.zone}</td><td>${r.table||'—'}</td><td>${r.kaparo&&r.kaparo!='0'?r.kaparo+' лв.':'—'}</td><td><span class="badge ${r.status==='confirmed'?'conf':'pend'}">${statusLabels[r.status]}</span></td><td>${r.notes||'—'}</td></tr>`).join('')}
     </tbody></table></body></html>`);
   win.document.close();
-  win.print();
+  win.onload = function() { win.print(); };
 }
 
 // ====== TOAST ======
