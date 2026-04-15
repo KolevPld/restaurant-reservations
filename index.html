@@ -458,7 +458,6 @@ textarea.form-control{resize:vertical;min-height:70px;}
       <div class="login-user-chips">
         <div class="login-chip" onclick="quickLogin('Мениджър')">Мениджър</div>
         <div class="login-chip" onclick="quickLogin('Сервитьор')">Сервитьор</div>
-        <div class="login-chip" onclick="quickLogin('Рецепция')">Рецепция</div>
         <div class="login-chip" onclick="quickLogin('Аниматор')">Аниматор</div>
       </div>
     </div>
@@ -1193,8 +1192,9 @@ function applyRolePermissions(role) {
 
 // ====== LOGIN ======
 function quickLogin(name) {
+  const u = users.find(x => x.name === name);
   document.getElementById('loginUser').value = name;
-  document.getElementById('loginPass').value = '1234';
+  document.getElementById('loginPass').value = u ? u.pass : '';
 }
 function doLogin() {
   const n = document.getElementById('loginUser').value.trim();
