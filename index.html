@@ -565,6 +565,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
         </select>
         <button class="btn btn-outline btn-sm" onclick="loadFromSheets()">🔄 Обнови</button>
         <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇️ CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="printReservations()">🖨️ Печат</button>
       </div>
       <div class="card" style="padding:0">
         <div class="tab-content active" id="tab-all"><div class="table-wrap" id="resTable-all"></div></div>
@@ -783,6 +784,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
       <div class="card" style="padding:0">
         <div class="card-header" style="padding:16px 20px 0">
           <div class="card-title">💰 Резервации с капаро</div>
+          <button class="btn btn-outline btn-sm" onclick="printKaparo()">🖨️ Печат</button>
         </div>
         <div class="table-wrap" id="kaparoTable"></div>
       </div>
@@ -1902,21 +1904,52 @@ function deleteUser(id){
 }
 
 // ====== PRINT ======
-function printDay() {
-  const today = new Date().toISOString().slice(0,10);
-  const todayRes = reservations.filter(r=>r.date===today&&r.status!=='cancelled').sort((a,b)=>a.time.localeCompare(b.time));
-  const win = window.open('','_blank');
-  win.document.write(`
-    <html><head><title>Програма ${formatDateBG(today)}</title>
-    <style>body{font-family:Arial,sans-serif;padding:20px;color:#222;}h1{color:#2C4A3E;border-bottom:2px solid #C9A84C;padding-bottom:8px;}table{width:100%;border-collapse:collapse;margin-top:16px;}th{background:#2C4A3E;color:#fff;padding:10px;text-align:left;font-size:12px;}td{padding:9px;border-bottom:1px solid #eee;font-size:12px;}tr:nth-child(even)td{background:#fafafa;}.badge{padding:3px 8px;border-radius:10px;font-size:11px;font-weight:bold;}.conf{background:#d4efdf;color:#196f3d;}.pend{background:#fef9e7;color:#9b7d10;}</style>
-    </head><body>
-    <h1>🍽️ Caramello Kids — Програма за ${formatDateBG(today)}</h1>
-    <p style="color:#666;font-size:13px">Отпечатано: ${new Date().toLocaleString('bg-BG')} · Общо резервации: ${todayRes.length}</p>
-    <table><thead><tr><th>Час</th><th>Клиент</th><th>Телефон</th><th>Гости</th><th>Зона</th><th>Маса</th><th>Капаро</th><th>Статус</th><th>Бележки</th></tr></thead><tbody>
-    ${todayRes.map(r=>`<tr><td><strong>${r.time}</strong></td><td>${r.name}</td><td>${r.phone}</td><td>${r.guests}</td><td>${zoneLabels[r.zone]||r.zone}</td><td>${r.table||'—'}</td><td>${r.kaparo&&r.kaparo!='0'?r.kaparo+' лв.':'—'}</td><td><span class="badge ${r.status==='confirmed'?'conf':'pend'}">${statusLabels[r.status]}</span></td><td>${r.notes||'—'}</td></tr>`).join('')}
-    </tbody></table></body></html>`);
+const PRINT_STYLE = `body{font-family:Arial,sans-serif;padding:20px;color:#222;}h1{color:#2C4A3E;border-bottom:2px solid #C9A84C;padding-bottom:8px;margin-bottom:4px;}p{color:#666;font-size:12px;margin-bottom:12px;}table{width:100%;border-collapse:collapse;}th{background:#2C4A3E;color:#fff;padding:9px 10px;text-align:left;font-size:11px;}td{padding:8px 10px;border-bottom:1px solid #eee;font-size:12px;color:#222;}tr:nth-child(even) td{background:#f9f9f9;}.badge{padding:2px 7px;border-radius:10px;font-size:11px;font-weight:bold;display:inline-block;}.conf{background:#d4efdf;color:#196f3d;}.pend{background:#fef9e7;color:#9b7d10;}`;
+
+function openPrintWin(title, html) {
+  const win = window.open('', '_blank');
+  if (!win) { alert('Позволете popup прозорци за печат.'); return; }
+  win.document.open();
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>${PRINT_STYLE}</style></head><body>${html}</body></html>`);
   win.document.close();
-  win.onload = function() { win.print(); };
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
+}
+
+function printDay() {
+  const today = new Date().toLocaleDateString('sv').slice(0,10);
+  const list = reservations.filter(r=>r.date===today&&r.status!=='cancelled').sort((a,b)=>a.time.localeCompare(b.time));
+  const rows = list.length
+    ? list.map(r=>`<tr><td><strong>${r.time}</strong></td><td>${r.name}</td><td>${r.phone}</td><td style="text-align:center">${r.guests}</td><td>${zoneLabels[r.zone]||r.zone}</td><td>${r.table||'—'}</td><td>${r.kaparo&&r.kaparo!='0'?r.kaparo+' лв.':'—'}</td><td><span class="badge ${r.status==='confirmed'?'conf':'pend'}">${statusLabels[r.status]}</span></td><td>${r.notes||'—'}</td></tr>`).join('')
+    : `<tr><td colspan="9" style="text-align:center;color:#999;padding:20px">Няма резервации за днес</td></tr>`;
+  openPrintWin(`Програма ${formatDateBG(today)}`,
+    `<h1>🍽️ Caramello Kids — Програма за ${formatDateBG(today)}</h1>
+     <p>Отпечатано: ${new Date().toLocaleString('bg-BG')} &nbsp;·&nbsp; Резервации: ${list.length}</p>
+     <table><thead><tr><th>Час</th><th>Клиент</th><th>Телефон</th><th>Гости</th><th>Зона</th><th>Маса</th><th>Капаро</th><th>Статус</th><th>Бележки</th></tr></thead><tbody>${rows}</tbody></table>`);
+}
+
+function printReservations() {
+  const list = [...reservations].filter(r=>r.status!=='cancelled').sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+  const rows = list.length
+    ? list.map(r=>`<tr><td>${formatDateBG(r.date)}</td><td><strong>${r.time}</strong></td><td>${r.name}</td><td>${r.phone}</td><td style="text-align:center">${r.guests}</td><td>${zoneLabels[r.zone]||r.zone}</td><td>${r.table||'—'}</td><td>${r.kaparo&&r.kaparo!='0'?r.kaparo+' лв.':'—'}</td><td><span class="badge ${r.status==='confirmed'?'conf':'pend'}">${statusLabels[r.status]}</span></td><td>${r.notes||'—'}</td></tr>`).join('')
+    : `<tr><td colspan="10" style="text-align:center;color:#999;padding:20px">Няма резервации</td></tr>`;
+  openPrintWin('Всички резервации',
+    `<h1>🍽️ Caramello Kids — Всички резервации</h1>
+     <p>Отпечатано: ${new Date().toLocaleString('bg-BG')} &nbsp;·&nbsp; Общо: ${list.length}</p>
+     <table><thead><tr><th>Дата</th><th>Час</th><th>Клиент</th><th>Телефон</th><th>Гости</th><th>Зона</th><th>Маса</th><th>Капаро</th><th>Статус</th><th>Бележки</th></tr></thead><tbody>${rows}</tbody></table>`);
+}
+
+function printKaparo() {
+  const list = reservations.filter(r=>(parseFloat(r.kaparo)>0||(r.kaparoStatus&&r.kaparoStatus!=='none'))&&r.status!=='cancelled').sort((a,b)=>a.date.localeCompare(b.date));
+  const total = list.reduce((s,r)=>s+(parseFloat(r.kaparo)||0),0);
+  const paid  = list.filter(r=>r.kaparoStatus==='paid').reduce((s,r)=>s+(parseFloat(r.kaparo)||0),0);
+  const rows = list.length
+    ? list.map(r=>`<tr><td>${formatDateBG(r.date)}</td><td><strong>${r.time}</strong></td><td>${r.name}</td><td>${r.phone}</td><td>${zoneLabels[r.zone]||r.zone}</td><td><strong>${r.kaparo} лв.</strong></td><td><span class="badge ${r.kaparoStatus==='paid'?'conf':'pend'}">${r.kaparoStatus==='paid'?'✅ Платено':'⏳ Очаква'}</span></td></tr>`).join('')
+    : `<tr><td colspan="7" style="text-align:center;color:#999;padding:20px">Няма резервации с капаро</td></tr>`;
+  openPrintWin('Капаро',
+    `<h1>💰 Caramello Kids — Капаро</h1>
+     <p>Отпечатано: ${new Date().toLocaleString('bg-BG')} &nbsp;·&nbsp; Очаквано: <strong>${total.toFixed(0)} лв.</strong> &nbsp;·&nbsp; Получено: <strong>${paid.toFixed(0)} лв.</strong></p>
+     <table><thead><tr><th>Дата</th><th>Час</th><th>Клиент</th><th>Телефон</th><th>Зона</th><th>Капаро</th><th>Статус</th></tr></thead><tbody>${rows}</tbody></table>`);
 }
 
 // ====== TOAST ======
