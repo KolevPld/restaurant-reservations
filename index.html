@@ -1337,44 +1337,35 @@ async function doLogin() {
   if (!u) { showToast('Грешно потребителско име или парола ❌','error'); return; }
   currentUser = u;
 
-  // Изчака Firebase Auth — с timeout 5с за да не блокира при auth грешка
+  // Изчака Firebase Auth да е готов (решава race condition при бързо зареждане)
   try {
-    await Promise.race([
-      window._authReady || Promise.resolve(),
-      new Promise(resolve => setTimeout(resolve, 5000))
-    ]);
+    if (window._authReady) await window._authReady;
   } catch(e) {
-    console.warn('Firebase Auth timeout/грешка:', e);
+    console.warn('Firebase Auth неуспешна:', e);
   }
 
-  // Запис на роля в Firestore users/{fbUid} — ЗАДЪЛЖИТЕЛНО преди зареждане
-  // merge:true — запазва евентуални допълнителни полета, само обновява посочените
+  // Записва ролята в Firestore users/{fbUid} — необходимо за Security Rules
   if (window._fbUid && window._setDoc) {
     try {
-      await window._setDoc(
-        window._doc('users', window._fbUid),
-        { role: u.role, name: u.name, loginAt: new Date().toISOString() },
-        { merge: true }
-      );
-      console.log('✅ users/' + window._fbUid + ' записан с роля: ' + u.role);
+      await window._setDoc(window._doc('users', window._fbUid), {
+        role: u.role,
+        name: u.name,
+        loginAt: new Date().toISOString()
+      }, { merge: true });
+      console.log('users/' + window._fbUid + ' записан с роля: ' + u.role);
     } catch(e) {
-      console.error('❌ Запис на роля неуспешен:', e.code, e.message);
-      showToast('⚠️ Грешка при запис на права: ' + e.message, 'error');
-      // Продължава въпреки грешката — rules fallback (noUserDoc) покрива случая
+      console.warn('Синхронизацията на ролята неуспешна:', e.code, e.message);
     }
   } else {
-    console.warn('⚠️ Firebase UID не е наличен (_fbUid=' + window._fbUid + ') — пропуска се запис на роля');
+    console.warn('Firebase Auth UID не е наличен — пропуска се запис на роля');
   }
 
-  // UI — показва приложението
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('sidebarName').textContent = u.name;
   document.getElementById('sidebarRole').textContent = roleLabels[u.role] || 'Служител';
   document.getElementById('sidebarInitial').textContent = u.name.charAt(0).toUpperCase();
   applyRolePermissions(u.role);
   showToast('Добре дошъл, ' + u.name + '! 👋','success');
-
-  // Зарежда данните — СЛЕД потвърждение на setDoc
   init();
   if (u.role === 'waiter' || u.role === 'animator') showView('reservations');
 }
