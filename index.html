@@ -474,6 +474,9 @@ textarea.form-control{resize:vertical;min-height:70px;}
 @media(max-width:900px){.fin-kpi{grid-template-columns:1fr 1fr;gap:10px;}}
 @media(max-width:480px){.fin-kpi{grid-template-columns:1fr 1fr;gap:8px;}.fin-kpi-card{padding:12px 10px;}.fin-kpi-value{font-size:1.4rem;}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
   import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
@@ -1490,6 +1493,7 @@ function resRow(r) {
         ${canEdit()&&r.status==='pending'?`<button class="btn btn-xs btn-gold" onclick="changeStatus('${r.id}','confirmed')">✅</button>`:''}
         ${canEdit()&&r.status!=='cancelled'?`<button class="btn btn-xs btn-outline" onclick="editReservation('${r.id}')">✏️</button>`:''}
         ${canEdit()&&r.status!=='cancelled'?`<button class="btn btn-xs btn-danger" onclick="changeStatus('${r.id}','cancelled')">✗</button>`:''}
+        ${canEdit()?`<button class="btn btn-xs btn-outline" onclick="exportReservationPDF('${r.id}')" title="Изтегли PDF">📄</button>`:''}
         <button class="btn btn-xs btn-whatsapp" onclick="sendWhatsApp('${r.id}')" title="WhatsApp">💬</button>
         <button class="btn btn-xs btn-viber" onclick="sendViber('${r.id}')" title="Viber">📱</button>
       </div>
@@ -2234,6 +2238,8 @@ function renderAnalytics() {
 
 // ====== FINANCE DASHBOARD ======
 let finPeriod = 'month';
+let finChartZoneInst = null;
+let finChartDaysInst = null;
 
 function setFinPeriod(btn, period) {
   finPeriod = period;
@@ -2299,36 +2305,55 @@ function renderFinance() {
       <div class="fin-kpi-sub">лв. неплатено</div>
     </div>`;
 
-  // Chart by zone
+  // Chart by zone — Chart.js
   const zoneRev = {};
   list.forEach(r => {
     const z = r.zone || 'indoor';
     zoneRev[z] = (zoneRev[z]||0) + (r.kaparoStatus==='paid' ? parseFloat(r.kaparo)||0 : 0) + menuRevenue(r);
   });
-  const maxZ = Math.max(...Object.values(zoneRev), 1);
-  document.getElementById('finChartZone').innerHTML = Object.keys(zoneRev).length
-    ? '<div class="bar-chart">'+Object.entries(zoneRev).sort((a,b)=>b[1]-a[1]).map(([z,sum])=>`
-        <div class="bar-row">
-          <span class="bar-label-wide">${(zoneLabels[z]||z).replace(/[\u{1F300}-\u{1F9FF}]/gu,'').trim()}</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${(sum/maxZ*100).toFixed(1)}%"><span class="bar-count">${sum.toFixed(0)} лв.</span></div></div>
-        </div>`).join('')+'</div>'
-    : '<div class="empty-state"><div class="empty-state-icon">🗺️</div><h3>Няма данни</h3></div>';
+  const zoneEl = document.getElementById('finChartZone');
+  if (finChartZoneInst) { finChartZoneInst.destroy(); finChartZoneInst = null; }
+  if (Object.keys(zoneRev).length) {
+    const zoneSorted = Object.entries(zoneRev).sort((a,b)=>b[1]-a[1]);
+    zoneEl.innerHTML = '<canvas id="canvasZone" style="max-height:220px"></canvas>';
+    finChartZoneInst = new Chart(document.getElementById('canvasZone'), {
+      type: 'bar',
+      data: {
+        labels: zoneSorted.map(([z])=>(zoneLabels[z]||z).replace(/[\u{1F300}-\u{1F9FF}]/gu,'').trim()),
+        datasets: [{ label:'Приходи (лв.)', data: zoneSorted.map(([,v])=>v),
+          backgroundColor:'rgba(44,74,62,0.75)', borderColor:'#2C4A3E', borderWidth:1, borderRadius:6 }]
+      },
+      options: { responsive:true, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y.toFixed(0)} лв.`}}},
+        scales:{ y:{ beginAtZero:true, ticks:{callback:v=>`${v} лв.`} } } }
+    });
+  } else {
+    zoneEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🗺️</div><h3>Няма данни</h3></div>';
+  }
 
-  // Chart by date
+  // Chart by date — Chart.js
   const dayRev = {};
   list.forEach(r => {
     if (!r.date) return;
     dayRev[r.date] = (dayRev[r.date]||0) + (r.kaparoStatus==='paid' ? parseFloat(r.kaparo)||0 : 0) + menuRevenue(r);
   });
   const sortedDays = Object.keys(dayRev).sort();
-  const maxDay = Math.max(...Object.values(dayRev), 1);
-  document.getElementById('finChartDays').innerHTML = sortedDays.length
-    ? '<div class="bar-chart">'+sortedDays.map(d=>`
-        <div class="bar-row">
-          <span class="bar-label">${d.slice(5)}</span>
-          <div class="bar-track"><div class="bar-fill bar-fill-gold" style="width:${(dayRev[d]/maxDay*100).toFixed(1)}%"><span class="bar-count">${dayRev[d].toFixed(0)}</span></div></div>
-        </div>`).join('')+'</div>'
-    : '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Няма данни</h3></div>';
+  const daysEl = document.getElementById('finChartDays');
+  if (finChartDaysInst) { finChartDaysInst.destroy(); finChartDaysInst = null; }
+  if (sortedDays.length) {
+    daysEl.innerHTML = '<canvas id="canvasDays" style="max-height:220px"></canvas>';
+    finChartDaysInst = new Chart(document.getElementById('canvasDays'), {
+      type: 'bar',
+      data: {
+        labels: sortedDays.map(d=>d.slice(5)),
+        datasets: [{ label:'Приходи (лв.)', data: sortedDays.map(d=>dayRev[d]),
+          backgroundColor:'rgba(201,168,76,0.75)', borderColor:'#C9A84C', borderWidth:1, borderRadius:6 }]
+      },
+      options: { responsive:true, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y.toFixed(0)} лв.`}}},
+        scales:{ y:{ beginAtZero:true, ticks:{callback:v=>`${v} лв.`} } } }
+    });
+  } else {
+    daysEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Няма данни</h3></div>';
+  }
 
   // Table
   const sorted = [...list].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
@@ -2360,6 +2385,59 @@ function renderFinance() {
       </tr>
     </tbody></table>`
     : '<div class="empty-state"><div class="empty-state-icon">💳</div><h3>Няма финансови данни за периода</h3></div>';
+}
+
+async function exportReservationPDF(id) {
+  const r = reservations.find(x=>x.id===id);
+  if (!r) return;
+  const menuNames = (r.menu||[]).map(mid=>menuItems.find(m=>m.id==mid)?.name).filter(Boolean).join(', ');
+  const menuRev = menuRevenue(r);
+  const kap = parseFloat(r.kaparo)||0;
+  const paid = r.kaparoStatus==='paid' ? kap : 0;
+  const total = paid + menuRev;
+  const statusMap = {confirmed:'Потвърдена',pending:'Чакаща',cancelled:'Отменена'};
+  const kapStatusMap = {paid:'✅ Платено',pending:'⏳ Очаква',none:'—'};
+
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;left:-9999px;top:0;width:595px;padding:40px;background:#fff;font-family:Arial,sans-serif;color:#2A2A2A;';
+  div.innerHTML = `
+    <div style="text-align:center;margin-bottom:28px;border-bottom:2px solid #2C4A3E;padding-bottom:16px">
+      <div style="font-size:1.8rem;font-weight:700;color:#2C4A3E">Caramello <span style="color:#C9A84C">Kids</span></div>
+      <div style="font-size:0.75rem;color:#8A8A8A;letter-spacing:0.1em;text-transform:uppercase;margin-top:4px">Потвърждение за резервация</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.88rem">
+      <tr style="background:#f5f0e8"><td style="padding:9px 12px;font-weight:600;width:40%;color:#5A5A5A">Клиент</td><td style="padding:9px 12px;font-weight:600">${r.name}</td></tr>
+      <tr><td style="padding:9px 12px;font-weight:600;color:#5A5A5A">Телефон</td><td style="padding:9px 12px">${r.phone}</td></tr>
+      <tr style="background:#f5f0e8"><td style="padding:9px 12px;font-weight:600;color:#5A5A5A">Дата</td><td style="padding:9px 12px">${formatDateBG(r.date)}</td></tr>
+      <tr><td style="padding:9px 12px;font-weight:600;color:#5A5A5A">Час</td><td style="padding:9px 12px;font-weight:700;color:#2C4A3E">${r.time}${r.duration?` (${r.duration} ч.)`:''}</td></tr>
+      <tr style="background:#f5f0e8"><td style="padding:9px 12px;font-weight:600;color:#5A5A5A">Зона</td><td style="padding:9px 12px">${zoneLabels[r.zone]||r.zone}</td></tr>
+      <tr><td style="padding:9px 12px;font-weight:600;color:#5A5A5A">Маса</td><td style="padding:9px 12px">${r.table||'—'}</td></tr>
+      <tr style="background:#f5f0e8"><td style="padding:9px 12px;font-weight:600;color:#5A5A5A">Гости</td><td style="padding:9px 12px">${r.guests}</td></tr>
+      <tr><td style="padding:9px 12px;font-weight:600;color:#5A5A5A">Статус</td><td style="padding:9px 12px">${statusMap[r.status]||r.status}</td></tr>
+      <tr style="background:#f5f0e8"><td style="padding:9px 12px;font-weight:600;color:#5A5A5A">Капаро</td><td style="padding:9px 12px;color:#9B7A2E;font-weight:600">${kap>0?kap.toFixed(0)+' лв.':'—'}</td></tr>
+      <tr><td style="padding:9px 12px;font-weight:600;color:#5A5A5A">Статус капаро</td><td style="padding:9px 12px">${kapStatusMap[r.kaparoStatus||'none']}</td></tr>
+      ${menuNames?`<tr style="background:#f5f0e8"><td style="padding:9px 12px;font-weight:600;color:#5A5A5A">Поръчки</td><td style="padding:9px 12px">${menuNames}</td></tr>`:''}
+      ${r.notes?`<tr><td style="padding:9px 12px;font-weight:600;color:#5A5A5A">Бележки</td><td style="padding:9px 12px">${r.notes}</td></tr>`:''}
+      ${total>0?`<tr style="background:#2C4A3E;color:#fff"><td style="padding:11px 12px;font-weight:700">ОБЩО</td><td style="padding:11px 12px;font-weight:700;font-size:1.05rem">${total.toFixed(2)} лв.</td></tr>`:''}
+    </table>
+    <div style="text-align:center;margin-top:28px;font-size:0.72rem;color:#8A8A8A">Отпечатано: ${new Date().toLocaleString('bg-BG')} · Caramello Kids</div>`;
+  document.body.appendChild(div);
+
+  try {
+    const canvas = await html2canvas(div, {scale:2, useCORS:true, backgroundColor:'#ffffff'});
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const pW = pdf.internal.pageSize.getWidth();
+    const pH = pdf.internal.pageSize.getHeight();
+    const ratio = canvas.width / canvas.height;
+    const imgW = pW - 20;
+    const imgH = imgW / ratio;
+    pdf.addImage(imgData,'PNG',10,10,imgW,Math.min(imgH, pH-20));
+    pdf.save(`rezervacia-${r.name.replace(/\s+/g,'-')}-${r.date}.pdf`);
+  } finally {
+    document.body.removeChild(div);
+  }
 }
 
 function printFinance() {
