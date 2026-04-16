@@ -483,7 +483,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
     initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
     collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, query, orderBy
   } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-  import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+  import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyBUWXTDFJ73W_9wZcYc9B3hxMMBi2iFwD8",
@@ -501,12 +501,22 @@ textarea.form-control{resize:vertical;min-height:70px;}
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
   });
 
-  // Анонимна автентикация — Firebase UID се запазва глобално
-  // и се използва за синхронизация на ролята при вход
+  // Анонимна автентикация.
+  // _authReady е Promise — resolve-ва се щом Firebase Auth е готов с UID.
+  // onAuthStateChanged хваща и вече запазена сесия от предишно посещение,
+  // докато signInAnonymously().then() хваща само нови сесии.
   const auth = getAuth(app);
-  signInAnonymously(auth)
-    .then(cred => { window._fbUid = cred.user.uid; })
-    .catch(e => console.warn('Анонимна автентикация неуспешна:', e));
+  window._authReady = new Promise(resolve => {
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        window._fbUid = user.uid;
+        resolve();
+      } else {
+        signInAnonymously(auth)
+          .catch(e => console.warn('Анонимна автентикация неуспешна:', e));
+      }
+    });
+  });
 
   window._db = db;
   window._col = (name) => collection(db, name);
@@ -1327,7 +1337,14 @@ async function doLogin() {
   if (!u) { showToast('Грешно потребителско име или парола ❌','error'); return; }
   currentUser = u;
 
-  // Синхронизира ролята в Firestore users/{fbUid} — необходимо за Security Rules
+  // Изчака Firebase Auth да е готов (решава race condition при бързо зареждане)
+  try {
+    if (window._authReady) await window._authReady;
+  } catch(e) {
+    console.warn('Firebase Auth неуспешна:', e);
+  }
+
+  // Записва ролята в Firestore users/{fbUid} — необходимо за Security Rules
   if (window._fbUid && window._setDoc) {
     try {
       await window._setDoc(window._doc('users', window._fbUid), {
@@ -1337,7 +1354,10 @@ async function doLogin() {
       }, { merge: true });
     } catch(e) {
       console.warn('Синхронизацията на ролята неуспешна:', e);
+      showToast('⚠️ Ролята не е синхронизирана — може да липсват права', 'error');
     }
+  } else {
+    console.warn('Firebase Auth UID не е наличен — пропуска се запис на роля');
   }
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('sidebarName').textContent = u.name;

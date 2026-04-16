@@ -31,11 +31,19 @@ service cloud.firestore {
     function isAnimator(){ return isAuth() && getRole() == 'animator';}
     function isStaff()   { return isManager() || isWaiter() || isAnimator(); }
 
+    // Помощна функция — true ако users/{uid} документът все още не съществува.
+    // Използва се за fallback докато doLogin() не запише ролята за първи път.
+    function noUserDoc() {
+      return !exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     // ── Потребители ───────────────────────────────────────────
-    // Всеки логнат потребител може да запише САМО собствения си документ.
+    // Всеки логнат потребител може да запише САМО собствения си документ
+    // (doLogin() го прави при всеки вход).
     // Само мениджърът може да чете всички потребители.
     match /users/{userId} {
       allow read:  if isAuth() && (request.auth.uid == userId || isManager());
+      // write не изисква роля — нужно е за първоначалното създаване на документа
       allow write: if isAuth() && request.auth.uid == userId;
     }
 
@@ -43,19 +51,24 @@ service cloud.firestore {
     // Мениджър:  пълен достъп
     // Сервитьор: чете всички, само създава (без редакция/изтриване)
     // Аниматор:  само Kids и Paintball зони
+    // Fallback:  ако users/{uid} още не съществува (първи вход, race condition)
+    //            → позволи четене на логнат потребител докато ролята се запише
     match /reservations/{resId} {
       allow read:
         if isManager()
         || isWaiter()
-        || (isAnimator() && resource.data.get('zone', 'indoor') in ['kids', 'paintball']);
+        || (isAnimator() && resource.data.get('zone', 'indoor') in ['kids', 'paintball'])
+        || (isAuth() && noUserDoc());
 
       allow create:
         if isManager()
         || isWaiter()
-        || (isAnimator() && request.resource.data.get('zone', 'indoor') in ['kids', 'paintball']);
+        || (isAnimator() && request.resource.data.get('zone', 'indoor') in ['kids', 'paintball'])
+        || (isAuth() && noUserDoc());
 
       allow update, delete:
-        if isManager();
+        if isManager()
+        || (isAuth() && noUserDoc());
     }
 
     // ── Маси ─────────────────────────────────────────────────
