@@ -47,12 +47,12 @@ service cloud.firestore {
       allow read:
         if isManager()
         || isWaiter()
-        || (isAnimator() && resource.data.zone in ['kids', 'paintball']);
+        || (isAnimator() && resource.data.get('zone', 'indoor') in ['kids', 'paintball']);
 
       allow create:
         if isManager()
         || isWaiter()
-        || (isAnimator() && request.resource.data.zone in ['kids', 'paintball']);
+        || (isAnimator() && request.resource.data.get('zone', 'indoor') in ['kids', 'paintball']);
 
       allow update, delete:
         if isManager();
