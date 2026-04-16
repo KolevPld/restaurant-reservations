@@ -1329,37 +1329,13 @@ function quickLogin(name) {
   document.getElementById('loginUser').value = name;
   document.getElementById('loginPass').value = u ? u.pass : '';
 }
-async function doLogin() {
+function doLogin() {
   const n = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
   if (!n || !p) { showToast('Въведи потребителско име и парола','error'); return; }
   const u = users.find(x => x.name === n && x.pass === p);
   if (!u) { showToast('Грешно потребителско име или парола ❌','error'); return; }
   currentUser = u;
-
-  // Изчака Firebase Auth да е готов (решава race condition при бързо зареждане)
-  try {
-    if (window._authReady) await window._authReady;
-  } catch(e) {
-    console.warn('Firebase Auth неуспешна:', e);
-  }
-
-  // Записва ролята в Firestore users/{fbUid} — необходимо за Security Rules
-  if (window._fbUid && window._setDoc) {
-    try {
-      await window._setDoc(window._doc('users', window._fbUid), {
-        role: u.role,
-        name: u.name,
-        loginAt: new Date().toISOString()
-      }, { merge: true });
-      console.log('users/' + window._fbUid + ' записан с роля: ' + u.role);
-    } catch(e) {
-      console.warn('Синхронизацията на ролята неуспешна:', e.code, e.message);
-    }
-  } else {
-    console.warn('Firebase Auth UID не е наличен — пропуска се запис на роля');
-  }
-
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('sidebarName').textContent = u.name;
   document.getElementById('sidebarRole').textContent = roleLabels[u.role] || 'Служител';
