@@ -2,90 +2,80 @@ rules_version = '2';
 
 // ============================================================
 // Caramello Kids — Firestore Security Rules
-// Deploy: firebase deploy --only firestore:rules
 //
-// Изисква Firebase Authentication (анонимна или пълна).
-// Роли се задават чрез Firebase Auth Custom Claims:
-//   { role: "manager" | "waiter" | "animator" }
-// Задаване на роля (Cloud Function или Admin SDK):
-//   admin.auth().setCustomUserClaims(uid, { role: "manager" })
+// Как работи:
+//   1. Приложението използва Firebase Anonymous Auth.
+//   2. При вход потребителят записва ролята си в users/{uid}.role
+//   3. Rules четат тази роля чрез get() при всяка заявка.
+//
+// Deploy: firebase deploy --only firestore:rules
 // ============================================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── Помощни функции ──────────────────────────────────────
+
     function isAuth() {
       return request.auth != null;
     }
 
-    function role() {
-      return request.auth.token.get('role', 'none');
+    // Чете ролята от users/{uid} в Firestore
+    function getRole() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc.exists() ? userDoc.data.get('role', 'none') : 'none';
     }
 
-    function isManager() {
-      return isAuth() && role() == 'manager';
-    }
+    function isManager() { return isAuth() && getRole() == 'manager'; }
+    function isWaiter()  { return isAuth() && getRole() == 'waiter';  }
+    function isAnimator(){ return isAuth() && getRole() == 'animator';}
+    function isStaff()   { return isManager() || isWaiter() || isAnimator(); }
 
-    function isWaiter() {
-      return isAuth() && role() == 'waiter';
-    }
-
-    function isAnimator() {
-      return isAuth() && role() == 'animator';
-    }
-
-    function isStaff() {
-      return isManager() || isWaiter() || isAnimator();
+    // ── Потребители ───────────────────────────────────────────
+    // Всеки логнат потребител може да запише САМО собствения си документ.
+    // Само мениджърът може да чете всички потребители.
+    match /users/{userId} {
+      allow read:  if isAuth() && (request.auth.uid == userId || isManager());
+      allow write: if isAuth() && request.auth.uid == userId;
     }
 
     // ── Резервации ────────────────────────────────────────────
-    // Мениджър: пълен достъп
-    // Сервитьор: четене на всички, само създаване (без редакция/изтриване)
-    // Аниматор: само резервации в зони kids и paintball
+    // Мениджър:  пълен достъп
+    // Сервитьор: чете всички, само създава (без редакция/изтриване)
+    // Аниматор:  само Kids и Paintball зони
     match /reservations/{resId} {
-      allow read: if isManager() || isWaiter() ||
-        (isAnimator() && resource.data.zone in ['kids', 'paintball']);
+      allow read:
+        if isManager()
+        || isWaiter()
+        || (isAnimator() && resource.data.zone in ['kids', 'paintball']);
 
-      allow create: if isManager() || isWaiter() ||
-        (isAnimator() && request.resource.data.zone in ['kids', 'paintball']);
+      allow create:
+        if isManager()
+        || isWaiter()
+        || (isAnimator() && request.resource.data.zone in ['kids', 'paintball']);
 
-      allow update, delete: if isManager();
+      allow update, delete:
+        if isManager();
     }
 
-    // ── Маси / Tables ─────────────────────────────────────────
+    // ── Маси ─────────────────────────────────────────────────
     match /tables/{docId} {
-      allow read: if isStaff();
+      allow read:  if isStaff();
       allow write: if isManager();
     }
 
-    // ── Менюта ────────────────────────────────────────────────
+    // ── Меню ─────────────────────────────────────────────────
     match /menuItems/{docId} {
-      allow read: if isStaff();
+      allow read:  if isStaff();
       allow write: if isManager();
     }
 
-    // ── Одит лог ─────────────────────────────────────────────
-    // Четене само за мениджър; създаване за всеки персонал;
-    // редакция/изтриване на одит записи е забранено
+    // ── Одит лог (immutable) ──────────────────────────────────
     match /audit/{docId} {
-      allow read: if isManager();
-      allow create: if isStaff();
+      allow read:           if isManager();
+      allow create:         if isStaff();
       allow update, delete: if false;
     }
-
-    // ── Потребители (персонал) ────────────────────────────────
-    match /users/{userId} {
-      allow read, write: if isManager();
-    }
-
-    // ── Онлайн резервации от booking.html ─────────────────────
-    // Публичният формуляр изпраща към Supabase, не тук.
-    // Ако бъде мигриран към Firestore, добавете:
-    // match /online_bookings/{docId} {
-    //   allow create: if true; // публично създаване
-    //   allow read, update, delete: if isManager();
-    // }
 
     // ── Отказ по подразбиране ─────────────────────────────────
     match /{document=**} {

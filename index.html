@@ -481,7 +481,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
   import {
     initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-    collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy
+    collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, query, orderBy
   } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
   import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
@@ -501,9 +501,12 @@ textarea.form-control{resize:vertical;min-height:70px;}
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
   });
 
-  // Анонимна автентикация — необходима за Firestore Security Rules
+  // Анонимна автентикация — Firebase UID се запазва глобално
+  // и се използва за синхронизация на ролята при вход
   const auth = getAuth(app);
-  signInAnonymously(auth).catch(e => console.warn('Анонимна автентикация неуспешна:', e));
+  signInAnonymously(auth)
+    .then(cred => { window._fbUid = cred.user.uid; })
+    .catch(e => console.warn('Анонимна автентикация неуспешна:', e));
 
   window._db = db;
   window._col = (name) => collection(db, name);
@@ -511,6 +514,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
   window._addDoc = addDoc;
   window._updateDoc = updateDoc;
   window._deleteDoc = deleteDoc;
+  window._setDoc = setDoc;
   window._doc = (name, id) => doc(db, name, id);
   window._query = query;
   window._orderBy = orderBy;
@@ -1315,13 +1319,26 @@ function quickLogin(name) {
   document.getElementById('loginUser').value = name;
   document.getElementById('loginPass').value = u ? u.pass : '';
 }
-function doLogin() {
+async function doLogin() {
   const n = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
   if (!n || !p) { showToast('Въведи потребителско име и парола','error'); return; }
   const u = users.find(x => x.name === n && x.pass === p);
   if (!u) { showToast('Грешно потребителско име или парола ❌','error'); return; }
   currentUser = u;
+
+  // Синхронизира ролята в Firestore users/{fbUid} — необходимо за Security Rules
+  if (window._fbUid && window._setDoc) {
+    try {
+      await window._setDoc(window._doc('users', window._fbUid), {
+        role: u.role,
+        name: u.name,
+        loginAt: new Date().toISOString()
+      }, { merge: true });
+    } catch(e) {
+      console.warn('Синхронизацията на ролята неуспешна:', e);
+    }
+  }
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('sidebarName').textContent = u.name;
   document.getElementById('sidebarRole').textContent = roleLabels[u.role] || 'Служител';
