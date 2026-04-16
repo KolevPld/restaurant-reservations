@@ -479,7 +479,11 @@ textarea.form-control{resize:vertical;min-height:70px;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-  import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+  import {
+    initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+    collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy
+  } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+  import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyBUWXTDFJ73W_9wZcYc9B3hxMMBi2iFwD8",
@@ -491,12 +495,22 @@ textarea.form-control{resize:vertical;min-height:70px;}
   };
 
   const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+
+  // Офлайн кеш — данните се запазват локално при прекъсване на интернета
+  const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+
+  // Анонимна автентикация — необходима за Firestore Security Rules
+  const auth = getAuth(app);
+  signInAnonymously(auth).catch(e => console.warn('Анонимна автентикация неуспешна:', e));
+
   window._db = db;
   window._col = (name) => collection(db, name);
   window._getDocs = getDocs;
   window._addDoc = addDoc;
   window._updateDoc = updateDoc;
+  window._deleteDoc = deleteDoc;
   window._doc = (name, id) => doc(db, name, id);
   window._query = query;
   window._orderBy = orderBy;
@@ -1771,6 +1785,14 @@ function editReservation(id) {
 }
 
 // ====== CONFLICT CHECK ======
+// ====== PHONE VALIDATION ======
+function isValidBGPhone(phone) {
+  // Премахва интервали, тирета, скоби и точки
+  const c = phone.replace(/[\s\-\.\(\)]/g, '');
+  // Приема: 08XXXXXXXX, +3598XXXXXXXX, 003598XXXXXXXX, 02XXXXXXX, 03XXXXXXXX
+  return /^(0[1-9]\d{7,8}|\+359[1-9]\d{7,8}|00359[1-9]\d{7,8})$/.test(c);
+}
+
 function timeToMinutes(t) {
   const [h, m] = t.split(':').map(Number);
   return h * 60 + m;
@@ -1849,7 +1871,8 @@ async function saveReservation() {
   const date=document.getElementById('f-date').value;
   const time=document.getElementById('f-time').value;
   if (!name||!phone||!date||!time){showToast('Попълни задължителните полета','error');return;}
-  
+  if (!isValidBGPhone(phone)){showToast('Невалиден телефонен номер. Въведи в Bulgarian формат: 08XXXXXXXX или +359XXXXXXXXX','error');return;}
+
   document.getElementById('saveBtn').textContent='⏳ Запазва...';
   document.getElementById('saveBtn').disabled=true;
 

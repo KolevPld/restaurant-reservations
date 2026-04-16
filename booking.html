@@ -153,8 +153,9 @@ async function submitBooking(e) {
     showAlert('Моля попълнете всички задължителни полета.', 'error');
     return;
   }
-  if (phone.replace(/\D/g,'').length < 9) {
-    showAlert('Невалиден телефонен номер.', 'error');
+  const cleanPhone = phone.replace(/[\s\-\.\(\)]/g, '');
+  if (!/^(0[1-9]\d{7,8}|\+359[1-9]\d{7,8}|00359[1-9]\d{7,8})$/.test(cleanPhone)) {
+    showAlert('Невалиден телефонен номер. Моля въведете в формат 08XXXXXXXX или +359XXXXXXXXX.', 'error');
     return;
   }
 
