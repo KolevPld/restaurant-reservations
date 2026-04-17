@@ -648,6 +648,10 @@ textarea.form-control{resize:vertical;min-height:70px;}
           <div id="dashOccupancy"></div>
         </div>
       </div>
+      <div class="card" style="margin-top:18px">
+        <div class="card-header"><div class="card-title">🎂 Рождени дни тази седмица</div></div>
+        <div id="dashBirthdays"></div>
+      </div>
     </div>
 
     <!-- RESERVATIONS -->
@@ -1464,6 +1468,8 @@ function renderDashboard() {
     </tbody></table>`
     : `<div class="empty-state"><div class="empty-state-icon">🌅</div><h3>Няма резервации за днес</h3></div>`;
 
+  renderBirthdayTracker();
+
   // Occupancy summary
   const allTables = [...TABLES.indoor, ...TABLES.garden];
   const occupiedIds = new Set(todayRes.map(r => r.table));
@@ -1482,6 +1488,48 @@ function renderDashboard() {
     </div>
     <button class="btn btn-outline btn-sm" style="width:100%;justify-content:center" onclick="showView('floorplan')">🗺️ Виж пълен план</button>
   `;
+}
+
+// ====== BIRTHDAY TRACKER ======
+function renderBirthdayTracker() {
+  const el = document.getElementById('dashBirthdays');
+  if (!el) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const in7days = new Date(today);
+  in7days.setDate(today.getDate() + 7);
+
+  const toDate = s => { const [y,m,d] = s.split('-'); return new Date(y, m-1, d); };
+
+  const birthdays = reservations
+    .filter(r => {
+      if (r.kidsBirthday !== 'yes') return false;
+      if (r.status === 'cancelled') return false;
+      if (!r.date) return false;
+      const d = toDate(r.date);
+      return d >= today && d <= in7days;
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (!birthdays.length) {
+    el.innerHTML = `<div class="empty-state" style="padding:18px 0">
+      <div class="empty-state-icon">🎂</div>
+      <h3>Няма рождени дни тази седмица</h3>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = `<table><thead><tr>
+    <th>Клиент</th><th>Телефон</th><th>Дата</th><th>Зона</th>
+  </tr></thead><tbody>
+  ${birthdays.map(r => `<tr>
+    <td><strong>${r.name}</strong></td>
+    <td style="color:var(--text-mid)">${r.phone}</td>
+    <td style="font-weight:600;color:var(--forest)">${formatDateBG(r.date)}</td>
+    <td>${zoneLabels[r.zone] || r.zone}</td>
+  </tr>`).join('')}
+  </tbody></table>`;
 }
 
 // ====== FLOOR PLAN ======
