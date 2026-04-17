@@ -117,6 +117,8 @@ tr:hover td{background:rgba(44,74,62,0.03);}
 .form-control{padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.86rem;color:var(--charcoal);background:var(--cream);transition:border-color 0.18s,box-shadow 0.18s;outline:none;}
 .form-control:focus{border-color:var(--forest-light);box-shadow:0 0 0 3px rgba(44,74,62,0.08);}
 textarea.form-control{resize:vertical;min-height:70px;}
+.field-error{font-size:0.75rem;color:var(--danger);margin-top:4px;display:none;}
+.form-control.input-invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(192,57,43,0.1);}
 
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px);}
@@ -932,7 +934,11 @@ textarea.form-control{resize:vertical;min-height:70px;}
     <div class="form-grid">
       <div class="form-grid form-grid-2">
         <div class="form-group"><label class="form-label">Клиент *</label><input class="form-control" id="f-name" placeholder="Иван Иванов"/></div>
-        <div class="form-group"><label class="form-label">Телефон *</label><input class="form-control" id="f-phone" placeholder="08X XXX XXXX"/></div>
+        <div class="form-group">
+          <label class="form-label">Телефон *</label>
+          <input class="form-control" id="f-phone" placeholder="08X XXX XXXX" oninput="clearPhoneError()"/>
+          <div class="field-error" id="phone-error">Невалиден телефонен номер. Въведи 08XXXXXXXX или +3598XXXXXXXX</div>
+        </div>
       </div>
       <div class="form-grid form-grid-3">
         <div class="form-group"><label class="form-label">Дата *</label><input type="date" class="form-control" id="f-date" onchange="renderTableChips()"/></div>
@@ -1823,10 +1829,22 @@ function editReservation(id) {
 // ====== CONFLICT CHECK ======
 // ====== PHONE VALIDATION ======
 function isValidBGPhone(phone) {
-  // Премахва интервали, тирета, скоби и точки
   const c = phone.replace(/[\s\-\.\(\)]/g, '');
-  // Приема: 08XXXXXXXX, +3598XXXXXXXX, 003598XXXXXXXX, 02XXXXXXX, 03XXXXXXXX
-  return /^(0[1-9]\d{7,8}|\+359[1-9]\d{7,8}|00359[1-9]\d{7,8})$/.test(c);
+  // 08XXXXXXXX — точно 10 цифри, започва с 08
+  // +3598XXXXXXXX — точно +359 + 8 + 8 цифри = 13 знака
+  return /^08\d{8}$/.test(c) || /^\+3598\d{8}$/.test(c);
+}
+function showPhoneError() {
+  const el = document.getElementById('phone-error');
+  const inp = document.getElementById('f-phone');
+  if (el) el.style.display = 'block';
+  if (inp) inp.classList.add('input-invalid');
+}
+function clearPhoneError() {
+  const el = document.getElementById('phone-error');
+  const inp = document.getElementById('f-phone');
+  if (el) el.style.display = 'none';
+  if (inp) inp.classList.remove('input-invalid');
 }
 
 function timeToMinutes(t) {
@@ -1907,7 +1925,7 @@ async function saveReservation() {
   const date=document.getElementById('f-date').value;
   const time=document.getElementById('f-time').value;
   if (!name||!phone||!date||!time){showToast('Попълни задължителните полета','error');return;}
-  if (!isValidBGPhone(phone)){showToast('Невалиден телефонен номер. Въведи в Bulgarian формат: 08XXXXXXXX или +359XXXXXXXXX','error');return;}
+  if (!isValidBGPhone(phone)){showPhoneError();return;}
 
   document.getElementById('saveBtn').textContent='⏳ Запазва...';
   document.getElementById('saveBtn').disabled=true;
