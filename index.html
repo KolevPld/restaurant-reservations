@@ -481,7 +481,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
   import {
     initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-    collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, query, orderBy
+    collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, setDoc, doc, query, orderBy
   } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
   import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
@@ -524,6 +524,7 @@ textarea.form-control{resize:vertical;min-height:70px;}
   window._addDoc = addDoc;
   window._updateDoc = updateDoc;
   window._deleteDoc = deleteDoc;
+  window._getDoc = getDoc;
   window._setDoc = setDoc;
   window._doc = (name, id) => doc(db, name, id);
   window._query = query;
@@ -1329,13 +1330,34 @@ function quickLogin(name) {
   document.getElementById('loginUser').value = name;
   document.getElementById('loginPass').value = u ? u.pass : '';
 }
-function doLogin() {
+async function doLogin() {
   const n = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
   if (!n || !p) { showToast('Въведи потребителско име и парола','error'); return; }
   const u = users.find(x => x.name === n && x.pass === p);
   if (!u) { showToast('Грешно потребителско име или парола ❌','error'); return; }
   currentUser = u;
+
+  // Изчака Firebase Anonymous Auth да е готов и взима UID-а
+  if (window._authReady) await window._authReady;
+
+  // Ако документът users/{fbUid} не съществува — създава го
+  // Необходимо за Firestore Security Rules (getRole() чете оттам)
+  if (window._fbUid && window._getDoc && window._setDoc) {
+    try {
+      const snap = await window._getDoc(window._doc('users', window._fbUid));
+      if (!snap.exists()) {
+        await window._setDoc(window._doc('users', window._fbUid), {
+          name: u.name,
+          role: u.role,
+          loginAt: new Date().toISOString()
+        }, { merge: true });
+      }
+    } catch(e) {
+      console.warn('users doc check/create неуспешен:', e.message);
+    }
+  }
+
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('sidebarName').textContent = u.name;
   document.getElementById('sidebarRole').textContent = roleLabels[u.role] || 'Служител';
